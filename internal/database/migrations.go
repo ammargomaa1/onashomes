@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/onas/ecommerce-api/internal/models"
+	"github.com/onas/ecommerce-api/internal/utils"
 	"gorm.io/gorm"
 )
 
@@ -88,6 +89,23 @@ func SeedDefaultData(db *gorm.DB) error {
 
 	if err := db.Create(&adminRole).Error; err != nil {
 		return fmt.Errorf("failed to create admin role: %v", err)
+	}
+
+	hashedPassword, err := utils.HashPassword("password")
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %v", err)
+	}
+	admin := models.Admin{
+		Email:     "admin@onas.com",
+		Password:  hashedPassword,
+		FirstName: "Admin",
+		LastName:  "Admin",
+		RoleID:    adminRole.ID,
+		IsActive:  true,
+	}
+
+	if err := db.Create(&admin).Error; err != nil {
+		return fmt.Errorf("failed to create admin: %v", err)
 	}
 
 	fmt.Println("✓ Default data seeded successfully")
