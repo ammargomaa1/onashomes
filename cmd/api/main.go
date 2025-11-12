@@ -10,6 +10,7 @@ import (
 	"github.com/onas/ecommerce-api/internal/api/users"
 	"github.com/onas/ecommerce-api/internal/database"
 	"github.com/onas/ecommerce-api/internal/middleware"
+	"github.com/onas/ecommerce-api/internal/permissions"
 )
 
 func main() {
@@ -60,6 +61,13 @@ func main() {
 		adminService := admins.NewService(adminRepo)
 		adminController := admins.NewController(adminService)
 		admins.RegisterRoutes(api, adminController)
+	}
+
+	// Scan routes and sync permissions to database
+	log.Println("🔍 Scanning routes for permissions...")
+	permissionScanner := permissions.NewScanner(db)
+	if err := permissionScanner.ScanAndSync(router); err != nil {
+		log.Printf("⚠️  Failed to scan and sync permissions: %v", err)
 	}
 
 	// Start server
