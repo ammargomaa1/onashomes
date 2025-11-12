@@ -74,6 +74,12 @@ func (s *Scanner) addPredefinedPermissions() {
 		{Name: "permissions.update", Description: "Update existing permissions", Module: "permissions", Action: "update"},
 		{Name: "permissions.delete", Description: "Delete existing permissions", Module: "permissions", Action: "delete"},
 		
+		// File permissions
+		{Name: "files.view", Description: "View and list files", Module: "files", Action: "view"},
+		{Name: "files.create", Description: "Upload new files", Module: "files", Action: "create"},
+		{Name: "files.update", Description: "Update existing files", Module: "files", Action: "update"},
+		{Name: "files.delete", Description: "Delete existing files", Module: "files", Action: "delete"},
+		
 		// Product permissions (for future use)
 		{Name: "products.view", Description: "View and list products", Module: "products", Action: "view"},
 		{Name: "products.create", Description: "Create new products", Module: "products", Action: "create"},

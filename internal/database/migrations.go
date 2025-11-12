@@ -18,6 +18,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.Role{},
 		&models.User{},
 		&models.Admin{},
+		&models.File{},
 	)
 
 	if err != nil {

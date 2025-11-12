@@ -8,10 +8,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/onas/ecommerce-api/config"
 	"github.com/onas/ecommerce-api/internal/api/admins"
+	"github.com/onas/ecommerce-api/internal/api/files"
 	"github.com/onas/ecommerce-api/internal/api/users"
 	"github.com/onas/ecommerce-api/internal/database"
 	"github.com/onas/ecommerce-api/internal/middleware"
 	"github.com/onas/ecommerce-api/internal/permissions"
+	"github.com/onas/ecommerce-api/internal/services"
 )
 
 func main() {
@@ -83,6 +85,11 @@ func main() {
 		adminService := admins.NewService(adminRepo)
 		adminController := admins.NewController(adminService)
 		admins.RegisterRoutes(api, adminController)
+
+		// File module
+		fileService := services.NewFileService(db)
+		fileController := files.NewController(fileService)
+		files.RegisterRoutes(api, fileController)
 	}
 
 	// Scan routes and sync permissions to database

@@ -10,7 +10,7 @@ import (
 
 const (
 	// StorageDir is the base directory for all file storage
-	StorageDir = "storage"
+	StorageDir = "../../storage"
 )
 
 // FileUtil handles file operations within the storage directory

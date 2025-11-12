@@ -27,21 +27,19 @@ func RequirePermission(permissionName string) gin.HandlerFunc {
 
 		// Check if role has the required permission
 		db := database.GetDB()
-		var role models.Role
-		err := db.Preload("Permissions").Where("id = ?", roleID).First(&role).Error
+		var permission models.Permission
+		query := "SELECT permissions.id, permissions.name FROM role_permissions JOIN permissions ON role_permissions.permission_id = permissions.id WHERE role_permissions.role_id = ? AND permissions.name = ?"
+		err := db.Raw(query, roleID, permissionName).Scan(&permission).Error
 		if err != nil {
-			utils.ErrorResponse(c, 403, "Role not found", nil)
+			utils.ErrorResponse(c, 403, "Permission not found", nil)
 			c.Abort()
 			return
 		}
 
 		// Check if permission exists in role's permissions
 		hasPermission := false
-		for _, perm := range role.Permissions {
-			if perm.Name == permissionName {
-				hasPermission = true
-				break
-			}
+		if permissionName == permission.Name {
+			hasPermission = true
 		}
 
 		if !hasPermission {

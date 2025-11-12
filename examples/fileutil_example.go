@@ -36,6 +36,10 @@ func main() {
 		log.Fatalf("Failed to save file from reader: %v", err)
 	}
 	fmt.Printf("✅ File from reader saved at: %s\n", relativePath2)
+	
+	// Verify the file exists
+	readerFileExists := fileUtil.FileExists("uploads/from_reader.txt")
+	fmt.Printf("📁 Reader file exists: %t\n", readerFileExists)
 
 	// Example 4: Get file info
 	info, err := fileUtil.GetFileInfo("documents/test.txt")
@@ -55,12 +59,12 @@ func main() {
 	fullPath := fileUtil.GetFullPath("documents/test.txt")
 	fmt.Printf("🔗 Full path: %s\n", fullPath)
 
-	// Example 7: Delete file
-	err = fileUtil.DeleteFile("uploads/from_reader.txt")
-	if err != nil {
-		log.Fatalf("Failed to delete file: %v", err)
-	}
-	fmt.Println("🗑️  File deleted successfully")
+	// Example 7: Delete file (commented out to keep the file)
+	// err = fileUtil.DeleteFile("uploads/from_reader.txt")
+	// if err != nil {
+	// 	log.Fatalf("Failed to delete file: %v", err)
+	// }
+	// fmt.Println("🗑️  File deleted successfully")
 
 	// Example 8: Try to access invalid paths (security test)
 	_, err = fileUtil.SaveFile("../../../etc/passwd", []byte("hacker content"))
