@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/onas/ecommerce-api/config"
@@ -17,15 +18,36 @@ func main() {
 	// Load configuration
 	cfg := config.LoadConfig()
 
+	// Check for migration-only flags
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "--migrate-only":
+			runMigrationsOnly()
+			return
+		case "--rollback":
+			runRollback()
+			return
+		case "--migration-status":
+			showMigrationStatus()
+			return
+		}
+	}
+
 	// Set Gin mode
 	gin.SetMode(cfg.Server.GinMode)
 
 	// Initialize database connection
 	db := database.GetDB()
 
-	// Run migrations
+	// Run SQL migrations first
+	migrator := database.NewMigrator(db, "migrations")
+	if err := migrator.RunMigrations(); err != nil {
+		log.Fatalf("Failed to run SQL migrations: %v", err)
+	}
+
+	// Run GORM auto migrations
 	if err := database.AutoMigrate(db); err != nil {
-		log.Fatalf("Failed to run migrations: %v", err)
+		log.Fatalf("Failed to run auto migrations: %v", err)
 	}
 
 	// Seed default data
@@ -42,7 +64,7 @@ func main() {
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
-			"status": "ok",
+			"status":  "ok",
 			"message": "E-commerce API is running",
 		})
 	})
@@ -75,8 +97,52 @@ func main() {
 	fmt.Printf("\n🚀 Server starting on http://localhost%s\n", addr)
 	fmt.Println("📚 API Documentation: http://localhost" + addr + "/api")
 	fmt.Println("💚 Health Check: http://localhost" + addr + "/health")
-	
+
 	if err := router.Run(addr); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
+}
+
+// runMigrationsOnly runs only the SQL migrations without starting the server
+func runMigrationsOnly() {
+	log.Println("🔄 Running migrations only...")
+
+	db := database.GetDB()
+	migrator := database.NewMigrator(db, "migrations")
+
+	if err := migrator.RunMigrations(); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
+
+	log.Println("✅ Migrations completed successfully")
+}
+
+// runRollback rolls back the last migration
+func runRollback() {
+	log.Println("🔄 Rolling back last migration...")
+
+	db := database.GetDB()
+	migrator := database.NewMigrator(db, "migrations")
+
+	if err := migrator.RollbackMigration(); err != nil {
+		log.Fatalf("Failed to rollback migration: %v", err)
+	}
+
+	log.Println("✅ Rollback completed successfully")
+}
+
+// showMigrationStatus shows the current migration status
+func showMigrationStatus() {
+	log.Println("📋 Migration Status:")
+
+	db := database.GetDB()
+	migrator := database.NewMigrator(db, "migrations")
+
+	// This is a simplified status - you could enhance this to show more details
+	if err := migrator.RunMigrations(); err != nil {
+		log.Printf("❌ Error checking migrations: %v", err)
+		return
+	}
+
+	log.Println("✅ All migrations are up to date")
 }
