@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"github.com/onas/ecommerce-api/config"
 )
 
@@ -24,15 +23,15 @@ const (
 )
 
 type Claims struct {
-	EntityID   uuid.UUID  `json:"entity_id"`
+	EntityID   int64      `json:"entity_id"`
 	EntityType EntityType `json:"entity_type"`
-	RoleID     *uuid.UUID `json:"role_id,omitempty"`
+	RoleID     *int64     `json:"role_id,omitempty"`
 	TokenType  TokenType  `json:"token_type"`
 	jwt.RegisteredClaims
 }
 
 // GenerateToken generates a JWT token for a user or admin
-func GenerateToken(entityID uuid.UUID, entityType EntityType, roleID *uuid.UUID, tokenType TokenType) (string, error) {
+func GenerateToken(entityID int64, entityType EntityType, roleID *int64, tokenType TokenType) (string, error) {
 	cfg := config.AppConfig
 	var expiryDuration time.Duration
 	var secret string

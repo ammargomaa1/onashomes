@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/onas/ecommerce-api/internal/database"
 	"github.com/onas/ecommerce-api/internal/models"
 	"github.com/onas/ecommerce-api/internal/utils"
@@ -19,7 +18,7 @@ func RequirePermission(permissionName string) gin.HandlerFunc {
 			return
 		}
 
-		roleID, ok := roleIDValue.(uuid.UUID)
+		roleID, ok := roleIDValue.(int64)
 		if !ok {
 			utils.ErrorResponse(c, 403, "Invalid role ID", nil)
 			c.Abort()

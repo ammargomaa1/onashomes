@@ -3,12 +3,11 @@ package models
 import (
 	"time"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type User struct {
-	ID        uuid.UUID      `gorm:"type:uuid;primary_key;" json:"id"`
+	ID        int64          `gorm:"type:bigint;primary_key;autoIncrement" json:"id"`
 	Email     string         `gorm:"type:varchar(255);uniqueIndex;not null" json:"email"`
 	Password  string         `gorm:"type:varchar(255);not null" json:"-"`
 	FirstName string         `gorm:"type:varchar(100)" json:"first_name"`
@@ -19,9 +18,3 @@ type User struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
-func (u *User) BeforeCreate(tx *gorm.DB) error {
-	if u.ID == uuid.Nil {
-		u.ID = uuid.New()
-	}
-	return nil
-}

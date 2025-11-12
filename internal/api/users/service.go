@@ -3,7 +3,6 @@ package users
 import (
 	"errors"
 
-	"github.com/google/uuid"
 	"github.com/onas/ecommerce-api/internal/models"
 	"github.com/onas/ecommerce-api/internal/utils"
 	"gorm.io/gorm"
@@ -13,8 +12,8 @@ type Service interface {
 	Register(email, password, firstName, lastName string) (*models.User, error)
 	Login(email, password string) (string, string, error)
 	RefreshToken(refreshToken string) (string, error)
-	GetProfile(id uuid.UUID) (*models.User, error)
-	UpdateProfile(id uuid.UUID, firstName, lastName string) (*models.User, error)
+	GetProfile(id int64) (*models.User, error)
+	UpdateProfile(id int64, firstName, lastName string) (*models.User, error)
 	List(pagination *utils.Pagination) ([]models.User, int64, error)
 }
 
@@ -101,11 +100,11 @@ func (s *service) RefreshToken(refreshToken string) (string, error) {
 	return accessToken, nil
 }
 
-func (s *service) GetProfile(id uuid.UUID) (*models.User, error) {
+func (s *service) GetProfile(id int64) (*models.User, error) {
 	return s.repo.FindByID(id)
 }
 
-func (s *service) UpdateProfile(id uuid.UUID, firstName, lastName string) (*models.User, error) {
+func (s *service) UpdateProfile(id int64, firstName, lastName string) (*models.User, error) {
 	user, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, err

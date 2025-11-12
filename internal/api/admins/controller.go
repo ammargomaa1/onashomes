@@ -1,8 +1,9 @@
 package admins
 
 import (
+	"strconv"
+
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/onas/ecommerce-api/internal/utils"
 )
 
@@ -15,11 +16,11 @@ func NewController(service Service) *Controller {
 }
 
 type CreateAdminRequest struct {
-	Email     string    `json:"email" binding:"required,email"`
-	Password  string    `json:"password" binding:"required,min=6"`
-	FirstName string    `json:"first_name" binding:"required"`
-	LastName  string    `json:"last_name" binding:"required"`
-	RoleID    uuid.UUID `json:"role_id" binding:"required"`
+	Email     string `json:"email" binding:"required,email"`
+	Password  string `json:"password" binding:"required,min=6"`
+	FirstName string `json:"first_name" binding:"required"`
+	LastName  string `json:"last_name" binding:"required"`
+	RoleID    int64  `json:"role_id" binding:"required"`
 }
 
 type LoginRequest struct {
@@ -32,9 +33,9 @@ type RefreshTokenRequest struct {
 }
 
 type UpdateAdminRequest struct {
-	FirstName string    `json:"first_name" binding:"required"`
-	LastName  string    `json:"last_name" binding:"required"`
-	RoleID    uuid.UUID `json:"role_id" binding:"required"`
+	FirstName string `json:"first_name" binding:"required"`
+	LastName  string `json:"last_name" binding:"required"`
+	RoleID    int64  `json:"role_id" binding:"required"`
 }
 
 func (ctrl *Controller) Create(c *gin.Context) {
@@ -92,7 +93,7 @@ func (ctrl *Controller) RefreshToken(c *gin.Context) {
 
 func (ctrl *Controller) GetByID(c *gin.Context) {
 	idParam := c.Param("id")
-	id, err := uuid.Parse(idParam)
+	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
 		utils.ErrorResponse(c, 400, "Invalid admin ID", nil)
 		return
@@ -109,7 +110,7 @@ func (ctrl *Controller) GetByID(c *gin.Context) {
 
 func (ctrl *Controller) Update(c *gin.Context) {
 	idParam := c.Param("id")
-	id, err := uuid.Parse(idParam)
+	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
 		utils.ErrorResponse(c, 400, "Invalid admin ID", nil)
 		return
@@ -132,7 +133,7 @@ func (ctrl *Controller) Update(c *gin.Context) {
 
 func (ctrl *Controller) Delete(c *gin.Context) {
 	idParam := c.Param("id")
-	id, err := uuid.Parse(idParam)
+	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
 		utils.ErrorResponse(c, 400, "Invalid admin ID", nil)
 		return
