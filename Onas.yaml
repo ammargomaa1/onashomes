@@ -1,0 +1,450 @@
+type: collection.insomnia.rest/5.0
+name: Onas
+meta:
+  id: wrk_7c88558bb1234dca910b06dc33ccc487
+  created: 1762787355313
+  modified: 1762787355313
+  description: ""
+collection:
+  - name: Admin
+    meta:
+      id: fld_4f17240a1e844f4d8d7fc47fe1957d3a
+      created: 1762787381985
+      modified: 1766012124411
+      sortKey: -1762787381985
+      description: ""
+    children:
+      - name: Auth
+        meta:
+          id: fld_07a57e73b2e64724a72699430ef9e638
+          created: 1762787392424
+          modified: 1762787392424
+          sortKey: -1762787392424
+          description: ""
+        children:
+          - url: http://localhost:8080/api/admins/login
+            name: Login
+            meta:
+              id: req_bdb93d05b981461a8514bc8050ebec30
+              created: 1762787402019
+              modified: 1762787450367
+              isPrivate: false
+              description: ""
+              sortKey: -1762787402019
+            method: POST
+            body:
+              mimeType: application/json
+              text: |-
+                {
+                    "email": "admin@onas.com",
+                    "password": "password"
+                }
+            headers:
+              - name: Content-Type
+                value: application/json
+              - name: User-Agent
+                value: insomnia/12.0.0
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: http://localhost:8080/api/admins/refresh
+            name: Refresh
+            meta:
+              id: req_9d2adf262d9b4f5a9693169e43103726
+              created: 1762787459049
+              modified: 1762787491540
+              isPrivate: false
+              description: ""
+              sortKey: -1758471021988
+            method: POST
+            body:
+              mimeType: application/json
+              text: >-
+                {
+                    "refresh_token" : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnRpdHlfaWQiOiIyMDA3Y2ZmMi03MzhhLTQwMzctYWFkMi1lZDFhZjllOWY4Y2EiLCJlbnRpdHlfdHlwZSI6ImFkbWluIiwicm9sZV9pZCI6ImNkMjhjZTFkLWI0MjctNGFmZS1iN2Y5LTNmMGJiYWNkNzVlYSIsInRva2VuX3R5cGUiOiJyZWZyZXNoIiwiZXhwIjoxNzYzMzkyMjc4LCJpYXQiOjE3NjI3ODc0Nzh9.Bm0ALenGU3EXBPdp3LvIA9BvtCC2Hzcj1FXR4yiIQaQ"
+                }
+            headers:
+              - name: Content-Type
+                value: application/json
+              - name: User-Agent
+                value: insomnia/12.0.0
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: http://localhost:8080/api/admins
+            name: Me
+            meta:
+              id: req_27a9102553214b5ea1113cc872c7297d
+              created: 1762787500555
+              modified: 1766012381516
+              isPrivate: false
+              description: ""
+              sortKey: -1756312831972.5
+            method: GET
+            headers:
+              - name: User-Agent
+                value: insomnia/12.0.0
+                id: pair_afc954bf66ae4ef7b494210466d894ea
+              - id: pair_c6ac15002cae4df18c6f10e49a691f23
+                name: Authorization
+                value: Bearer
+                  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnRpdHlfaWQiOjEsImVudGl0eV90eXBlIjoiYWRtaW4iLCJyb2xlX2lkIjoxLCJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY2MDE1OTAwLCJpYXQiOjE3NjYwMTIzMDB9.TJ-kgryysRnQ_laY-OFDjMdNZVZrjgzGnuqjHwvgy-k
+                description: ""
+                disabled: false
+            authentication:
+              type: none
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+      - name: Products
+        meta:
+          id: fld_d4dce9d4682c475c9f38f66203d21ec2
+          created: 1762799893181
+          modified: 1762799893181
+          sortKey: -1762799893181
+          description: ""
+        children:
+          - url: http://localhost:8080/api/products
+            name: Create
+            meta:
+              id: req_4a0b02588caa43b4ae6b6becbdd3c084
+              created: 1762799905374
+              modified: 1766012267149
+              isPrivate: false
+              description: ""
+              sortKey: -1762799909627
+            method: POST
+            body:
+              mimeType: application/json
+              text: |-
+                {
+                    "sku": "TSHIRT-001",
+                    "name": "Logo Tee",
+                    "description": "Cotton tee",
+                    "attributes": [
+                      {"name": "size", "options": ["S","M","L"]},
+                      {"name": "color", "options": ["red","blue"]}
+                    ],
+                    "variants": [
+                      {
+                        "sku": "TSHIRT-001-S-RED",
+                        "price": 12.99,
+                        "options": {"size":"S","color":"red"},
+                        "inventory": {
+                          "warehouse_id":1,
+                          "qty_available":10,
+                          "qty_on_delivery":0,
+                          "qty_damaged":0
+                        }
+                      },
+                      {
+                        "sku": "TSHIRT-001-M-BLUE",
+                        "price": 12.99,
+                        "options": {"size":"M","color":"blue"},
+                        "inventory": {"warehouse_id":1, "qty_available":5}
+                      }
+                    ]
+                  }
+            headers:
+              - name: Content-Type
+                value: application/json
+              - name: User-Agent
+                value: insomnia/12.0.0
+                id: pair_afc954bf66ae4ef7b494210466d894ea
+              - id: pair_c6ac15002cae4df18c6f10e49a691f23
+                name: Authorization
+                value: Bearer
+                  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnRpdHlfaWQiOiIyMDA3Y2ZmMi03MzhhLTQwMzctYWFkMi1lZDFhZjllOWY4Y2EiLCJlbnRpdHlfdHlwZSI6ImFkbWluIiwicm9sZV9pZCI6IjZjMzg2ZDkwLTY2YjQtNGQ2NS1hZGJmLThkOGQ4OWZhMGEyOCIsInRva2VuX3R5cGUiOiJhY2Nlc3MiLCJleHAiOjE3NjI4MDM3MDgsImlhdCI6MTc2MjgwMDEwOH0.AabNGOO56X993Od2u4VHGr1Una-ocjwoldSDK0WFNuY
+                description: ""
+                disabled: false
+            authentication:
+              type: none
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: http://localhost:8080/api/products
+            name: List
+            meta:
+              id: req_94c58205f0fa4b93b7383fa4db1f186c
+              created: 1762800685412
+              modified: 1766012269370
+              isPrivate: false
+              description: ""
+              sortKey: -1762793655823
+            method: GET
+            body:
+              mimeType: application/json
+              text: |-
+                {
+                	"sku": "TSHIRT-001",
+                	"name": "Logo Tee",
+                	"description": "Cotton tee",
+                	"attributes": [
+                		{
+                			"name": "size",
+                			"options": [
+                				"S",
+                				"M",
+                				"L"
+                			]
+                		},
+                		{
+                			"name": "color",
+                			"options": [
+                				"red",
+                				"blue"
+                			]
+                		}
+                	],
+                	"variants": [
+                		{
+                			"sku": "TSHIRT-001-S-RED",
+                			"price": 12.99,
+                			"options": {
+                				"size": "S",
+                				"color": "red"
+                			},
+                			"inventory": {
+                				"warehouse_id": 1,
+                				"qty_available": 10,
+                				"qty_on_delivery": 0,
+                				"qty_damaged": 0
+                			}
+                		},
+                		{
+                			"sku": "TSHIRT-001-M-BLUE",
+                			"price": 12.99,
+                			"options": {
+                				"size": "M",
+                				"color": "blue"
+                			},
+                			"inventory": {
+                				"warehouse_id": 1,
+                				"qty_available": 5
+                			}
+                		}
+                	]
+                }
+            headers:
+              - name: Content-Type
+                value: application/json
+              - name: User-Agent
+                value: insomnia/12.0.0
+                id: pair_afc954bf66ae4ef7b494210466d894ea
+              - id: pair_c6ac15002cae4df18c6f10e49a691f23
+                name: Authorization
+                value: Bearer
+                  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnRpdHlfaWQiOiIyMDA3Y2ZmMi03MzhhLTQwMzctYWFkMi1lZDFhZjllOWY4Y2EiLCJlbnRpdHlfdHlwZSI6ImFkbWluIiwicm9sZV9pZCI6IjZjMzg2ZDkwLTY2YjQtNGQ2NS1hZGJmLThkOGQ4OWZhMGEyOCIsInRva2VuX3R5cGUiOiJhY2Nlc3MiLCJleHAiOjE3NjI4MDM3MDgsImlhdCI6MTc2MjgwMDEwOH0.AabNGOO56X993Od2u4VHGr1Una-ocjwoldSDK0WFNuY
+                description: ""
+                disabled: false
+            authentication:
+              type: none
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+      - name: File
+        meta:
+          id: fld_3f8af2568aa540c7809527774890061d
+          created: 1762973194775
+          modified: 1762973194775
+          sortKey: -1762973194776
+          description: ""
+        children:
+          - url: http://localhost:8080/api/files/upload
+            name: Upload
+            meta:
+              id: req_92639267e4c64cebb0f7144a9b326deb
+              created: 1762973207590
+              modified: 1762983609387
+              isPrivate: false
+              description: ""
+              sortKey: -1762973207590
+            method: POST
+            body:
+              mimeType: multipart/form-data
+              params:
+                - id: pair_a2094627256c4ba1a90458602b90e989
+                  name: file
+                  value: ""
+                  description: ""
+                  disabled: false
+                  type: file
+                  fileName: /home/ammar/Downloads/sd.jpeg
+            headers:
+              - name: Content-Type
+                value: multipart/form-data
+              - name: User-Agent
+                value: insomnia/12.0.0
+            authentication:
+              type: bearer
+              token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnRpdHlfaWQiOjEsImVudGl0eV90eXBlIjoiYWRtaW4iLCJyb2xlX2lkIjoxLCJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyOTg3MTk2LCJpYXQiOjE3NjI5ODM1OTZ9.LU2kmM-HoPZlmnIVgO9NiAmr50NVI6PpT9-K8IRbqJg
+              prefix: Bearer
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: http://localhost:8080/api/files/config
+            name: Get
+            meta:
+              id: req_089b8f78ae68443e9be18b8a7b92b158
+              created: 1762976959071
+              modified: 1762976991112
+              isPrivate: false
+              description: ""
+              sortKey: -1762929883099.25
+            method: GET
+            body:
+              mimeType: multipart/form-data
+              params:
+                - id: pair_a2094627256c4ba1a90458602b90e989
+                  name: file
+                  value: ""
+                  description: ""
+                  disabled: false
+                  type: file
+                  fileName: /home/ammar/Downloads/sd.jpeg
+            headers:
+              - name: Content-Type
+                value: multipart/form-data
+              - name: User-Agent
+                value: insomnia/12.0.0
+            authentication:
+              type: bearer
+              token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnRpdHlfaWQiOjEsImVudGl0eV90eXBlIjoiYWRtaW4iLCJyb2xlX2lkIjoxLCJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyOTc3MTM1LCJpYXQiOjE3NjI5NzM1MzV9.xXRRhqkObBbM-gDG_T_IM0Tp_B3MNxby6YrbbVaxHa4
+              prefix: Bearer
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+          - url: http://localhost:8080/api/files
+            name: Get Files
+            meta:
+              id: req_73b907fe5b7c43228c39f305500cd5b9
+              created: 1762977031066
+              modified: 1762977041797
+              isPrivate: false
+              description: ""
+              sortKey: -1762864896363.125
+            method: GET
+            body:
+              mimeType: multipart/form-data
+              params:
+                - id: pair_a2094627256c4ba1a90458602b90e989
+                  name: file
+                  value: ""
+                  description: ""
+                  disabled: false
+                  type: file
+                  fileName: /home/ammar/Downloads/sd.jpeg
+            headers:
+              - name: Content-Type
+                value: multipart/form-data
+              - name: User-Agent
+                value: insomnia/12.0.0
+            authentication:
+              type: bearer
+              token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnRpdHlfaWQiOjEsImVudGl0eV90eXBlIjoiYWRtaW4iLCJyb2xlX2lkIjoxLCJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYyOTc3MTM1LCJpYXQiOjE3NjI5NzM1MzV9.xXRRhqkObBbM-gDG_T_IM0Tp_B3MNxby6YrbbVaxHa4
+              prefix: Bearer
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+      - name: Supplier
+        meta:
+          id: fld_aa4084d173f24aa3b92ffeeb509268cb
+          created: 1766012140987
+          modified: 1766012140987
+          sortKey: -1766012140987
+          description: ""
+        children:
+          - url: http://localhost:8080/api/admin/suppliers
+            name: Create
+            meta:
+              id: req_e152519cc40b4f35a00966d8e1bb5f0b
+              created: 1766012158653
+              modified: 1766015263396
+              isPrivate: false
+              description: ""
+              sortKey: -1766012391795
+            method: POST
+            body:
+              mimeType: application/json
+              text: |-
+                {
+                	"company_name" : "western furns",
+                	"contact_person_name" : "Hambolla",
+                	"contact_number" : "01025698742"
+                }
+            headers:
+              - name: Content-Type
+                value: application/json
+                id: pair_8d80176e46a64060aebdd436d71d79a8
+              - name: User-Agent
+                value: insomnia/12.0.0
+                id: pair_afc954bf66ae4ef7b494210466d894ea
+              - id: pair_c6ac15002cae4df18c6f10e49a691f23
+                name: Authorization
+                value: Bearer
+                  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnRpdHlfaWQiOjEsImVudGl0eV90eXBlIjoiYWRtaW4iLCJyb2xlX2lkIjoxLCJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY2MDE4NTY2LCJpYXQiOjE3NjYwMTQ5NjZ9.qbIy-SE3a_iU9i1YtSSrReQjU2czbnQHiHq3tsBeLYI
+                description: ""
+                disabled: false
+            authentication:
+              type: none
+            settings:
+              renderRequestBody: true
+              encodeUrl: true
+              followRedirects: global
+              cookies:
+                send: true
+                store: true
+              rebuildPath: true
+cookieJar:
+  name: Default Jar
+  meta:
+    id: jar_9315d9baba953d5965d58591ae344194da03ac3b
+    created: 1762787355318
+    modified: 1762787355318
+environments:
+  name: Base Environment
+  meta:
+    id: env_9315d9baba953d5965d58591ae344194da03ac3b
+    created: 1762787355317
+    modified: 1762787355317
+    isPrivate: false
