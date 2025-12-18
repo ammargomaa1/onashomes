@@ -9,6 +9,7 @@ import (
 	"github.com/onas/ecommerce-api/config"
 	"github.com/onas/ecommerce-api/internal/api/admins"
 	"github.com/onas/ecommerce-api/internal/api/files"
+	"github.com/onas/ecommerce-api/internal/api/suppliers"
 	"github.com/onas/ecommerce-api/internal/api/users"
 	"github.com/onas/ecommerce-api/internal/database"
 	"github.com/onas/ecommerce-api/internal/middleware"
@@ -90,6 +91,11 @@ func main() {
 		fileService := services.NewFileService(db)
 		fileController := files.NewController(fileService)
 		files.RegisterRoutes(api, fileController)
+
+		// Supplier module
+		supplierRepo := suppliers.NewRepository(db)
+		supplierService := suppliers.NewService(supplierRepo)
+		suppliers.RegisterRoutes(api, supplierService)
 	}
 
 	// Scan routes and sync permissions to database

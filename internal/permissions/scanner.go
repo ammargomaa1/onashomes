@@ -116,7 +116,11 @@ func (s *Scanner) extractPermissionsFromRoute(route gin.RouteInfo) {
 		return
 	}
 	
-	module := pathParts[1]
+	module := pathParts[len(pathParts)-1]
+	// if last is a param, take the one before it
+	if strings.HasPrefix(module, ":") && len(pathParts) >= 3 {
+		module = pathParts[len(pathParts)-2]
+	}
 	
 	// Infer action from HTTP method and path
 	var action string
