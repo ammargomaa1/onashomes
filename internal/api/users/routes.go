@@ -25,7 +25,8 @@ func RegisterRoutes(router *gin.RouterGroup, controller *Controller) {
 		adminOnly := users.Group("")
 		adminOnly.Use(middleware.AuthMiddleware(), middleware.AdminAuthMiddleware())
 		{
-			adminOnly.GET("", controller.List)
+			// List users - requires users.view permission
+			adminOnly.GET("", middleware.RequirePermission("users.view"), controller.List)
 		}
 	}
 }

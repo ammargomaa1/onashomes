@@ -2,7 +2,6 @@ package users
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/onas/ecommerce-api/internal/utils"
 )
 
@@ -90,7 +89,7 @@ func (ctrl *Controller) RefreshToken(c *gin.Context) {
 
 func (ctrl *Controller) GetProfile(c *gin.Context) {
 	entityID, _ := c.Get("entity_id")
-	userID := entityID.(uuid.UUID)
+	userID := entityID.(int64)
 
 	user, err := ctrl.service.GetProfile(userID)
 	if err != nil {
@@ -109,7 +108,7 @@ func (ctrl *Controller) UpdateProfile(c *gin.Context) {
 	}
 
 	entityID, _ := c.Get("entity_id")
-	userID := entityID.(uuid.UUID)
+	userID := entityID.(int64)
 
 	user, err := ctrl.service.UpdateProfile(userID, req.FirstName, req.LastName)
 	if err != nil {

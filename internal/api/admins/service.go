@@ -3,19 +3,18 @@ package admins
 import (
 	"errors"
 
-	"github.com/google/uuid"
 	"github.com/onas/ecommerce-api/internal/models"
 	"github.com/onas/ecommerce-api/internal/utils"
 	"gorm.io/gorm"
 )
 
 type Service interface {
-	Create(email, password, firstName, lastName string, roleID uuid.UUID) (*models.Admin, error)
+	Create(email, password, firstName, lastName string, roleID int64) (*models.Admin, error)
 	Login(email, password string) (string, string, error)
 	RefreshToken(refreshToken string) (string, error)
-	GetByID(id uuid.UUID) (*models.Admin, error)
-	Update(id uuid.UUID, firstName, lastName string, roleID uuid.UUID) (*models.Admin, error)
-	Delete(id uuid.UUID) error
+	GetByID(id int64) (*models.Admin, error)
+	Update(id int64, firstName, lastName string, roleID int64) (*models.Admin, error)
+	Delete(id int64) error
 	List(pagination *utils.Pagination) ([]models.Admin, int64, error)
 }
 
@@ -27,7 +26,7 @@ func NewService(repo Repository) Service {
 	return &service{repo: repo}
 }
 
-func (s *service) Create(email, password, firstName, lastName string, roleID uuid.UUID) (*models.Admin, error) {
+func (s *service) Create(email, password, firstName, lastName string, roleID int64) (*models.Admin, error) {
 	// Check if admin already exists
 	_, err := s.repo.FindByEmail(email)
 	if err == nil {
@@ -104,11 +103,11 @@ func (s *service) RefreshToken(refreshToken string) (string, error) {
 	return accessToken, nil
 }
 
-func (s *service) GetByID(id uuid.UUID) (*models.Admin, error) {
+func (s *service) GetByID(id int64) (*models.Admin, error) {
 	return s.repo.FindByID(id)
 }
 
-func (s *service) Update(id uuid.UUID, firstName, lastName string, roleID uuid.UUID) (*models.Admin, error) {
+func (s *service) Update(id int64, firstName, lastName string, roleID int64) (*models.Admin, error) {
 	admin, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, err
@@ -126,7 +125,7 @@ func (s *service) Update(id uuid.UUID, firstName, lastName string, roleID uuid.U
 	return s.repo.FindByID(id)
 }
 
-func (s *service) Delete(id uuid.UUID) error {
+func (s *service) Delete(id int64) error {
 	return s.repo.Delete(id)
 }
 

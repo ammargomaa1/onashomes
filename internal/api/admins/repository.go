@@ -1,7 +1,6 @@
 package admins
 
 import (
-	"github.com/google/uuid"
 	"github.com/onas/ecommerce-api/internal/models"
 	"github.com/onas/ecommerce-api/internal/utils"
 	"gorm.io/gorm"
@@ -10,9 +9,9 @@ import (
 type Repository interface {
 	Create(admin *models.Admin) error
 	FindByEmail(email string) (*models.Admin, error)
-	FindByID(id uuid.UUID) (*models.Admin, error)
+	FindByID(id int64) (*models.Admin, error)
 	Update(admin *models.Admin) error
-	Delete(id uuid.UUID) error
+	Delete(id int64) error
 	List(pagination *utils.Pagination) ([]models.Admin, int64, error)
 }
 
@@ -34,7 +33,7 @@ func (r *repository) FindByEmail(email string) (*models.Admin, error) {
 	return &admin, err
 }
 
-func (r *repository) FindByID(id uuid.UUID) (*models.Admin, error) {
+func (r *repository) FindByID(id int64) (*models.Admin, error) {
 	var admin models.Admin
 	err := r.db.Preload("Role.Permissions").Where("id = ?", id).First(&admin).Error
 	return &admin, err
@@ -44,7 +43,7 @@ func (r *repository) Update(admin *models.Admin) error {
 	return r.db.Save(admin).Error
 }
 
-func (r *repository) Delete(id uuid.UUID) error {
+func (r *repository) Delete(id int64) error {
 	return r.db.Delete(&models.Admin{}, id).Error
 }
 

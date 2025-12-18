@@ -47,12 +47,39 @@ func AuthMiddleware() gin.HandlerFunc {
 // AdminAuthMiddleware ensures the authenticated entity is an admin
 func AdminAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		entityType, exists := c.Get("entity_type")
-		if !exists || entityType != utils.EntityAdmin {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			utils.ErrorResponse(c, 401, "Authorization header required", nil)
+			c.Abort()
+			return
+		}
+
+		// Extract token from "Bearer <token>"
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			utils.ErrorResponse(c, 401, "Invalid authorization header format", nil)
+			c.Abort()
+			return
+		}
+
+		token := parts[1]
+		claims, err := utils.ValidateToken(token, utils.AccessToken)
+		if err != nil {
+			utils.ErrorResponse(c, 401, "Invalid or expired token", err.Error())
+			c.Abort()
+			return
+		}
+
+		if claims.EntityType != utils.EntityAdmin {
 			utils.ErrorResponse(c, 403, "Admin access required", nil)
 			c.Abort()
 			return
 		}
+		if claims.RoleID != nil {
+			c.Set("role_id", *claims.RoleID)
+		}
+		c.Set("entity_id", claims.EntityID)
+		c.Set("entity_type", claims.EntityType)
 
 		c.Next()
 	}

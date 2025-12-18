@@ -31,3 +31,5 @@ Thumbs.db
 
 # Vendor
 vendor/
+
+storage/
