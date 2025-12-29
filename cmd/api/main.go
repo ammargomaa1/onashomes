@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/onas/ecommerce-api/config"
 	"github.com/onas/ecommerce-api/internal/api/admins"
+	"github.com/onas/ecommerce-api/internal/api/attributes"
 	"github.com/onas/ecommerce-api/internal/api/files"
 	"github.com/onas/ecommerce-api/internal/api/products"
 	"github.com/onas/ecommerce-api/internal/api/suppliers"
@@ -101,6 +102,12 @@ func main() {
 		supplierRepo := suppliers.NewRepository(db)
 		supplierService := suppliers.NewService(supplierRepo)
 		suppliers.RegisterRoutes(api, supplierService)
+
+		// Attributes module (admin)
+		attributeRepo := attributes.NewRepository(db)
+		attributeService := attributes.NewService(attributeRepo)
+		attributeController := attributes.NewController(attributeService)
+		attributes.RegisterRoutes(api, attributeController)
 
 		// Products module (admin + public)
 		productRepo := products.NewRepository(db)
