@@ -9,6 +9,7 @@ import (
 	"github.com/onas/ecommerce-api/config"
 	"github.com/onas/ecommerce-api/internal/api/admins"
 	"github.com/onas/ecommerce-api/internal/api/files"
+	"github.com/onas/ecommerce-api/internal/api/products"
 	"github.com/onas/ecommerce-api/internal/api/suppliers"
 	"github.com/onas/ecommerce-api/internal/api/users"
 	"github.com/onas/ecommerce-api/internal/database"
@@ -41,6 +42,10 @@ func main() {
 
 	// Initialize database connection
 	db := database.GetDB()
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatalf("Failed to get sql.DB from gorm DB: %v", err)
+	}
 
 	// Run SQL migrations first
 	migrator := database.NewMigrator(db, "migrations")
@@ -96,6 +101,12 @@ func main() {
 		supplierRepo := suppliers.NewRepository(db)
 		supplierService := suppliers.NewService(supplierRepo)
 		suppliers.RegisterRoutes(api, supplierService)
+
+		// Products module (admin + public)
+		productRepo := products.NewRepository(db)
+		productService := products.NewService(sqlDB, productRepo)
+		productController := products.NewController(productService)
+		products.RegisterRoutes(api, productController)
 	}
 
 	// Scan routes and sync permissions to database
