@@ -5,16 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/onas/ecommerce-api/internal/api/products/requests"
 	"github.com/onas/ecommerce-api/internal/utils"
 )
-
-type AdminVariantRequest struct {
-	SKU               string  `json:"sku" binding:"required"`
-	IsActive          bool    `json:"is_active"`
-	AttributeValueIDs []int64 `json:"attribute_value_ids" binding:"required"`
-	ImageFileIDs      []int64 `json:"image_file_ids"`
-	AddOnProductIDs   []int64 `json:"add_on_product_ids"`
-}
 
 type AdminProductListItem struct {
 	ID       int64   `json:"id"`
@@ -51,6 +44,7 @@ type AdminVariantImage struct {
 }
 
 type AdminVariantAddOn struct {
+	ID        int64  `json:"id"`
 	ProductID int64  `json:"product_id"`
 	Name      string `json:"name"`
 }
@@ -75,13 +69,17 @@ type AdminProductDetail struct {
 }
 
 type Service interface {
-	CreateProduct(ctx context.Context, req AdminProductRequest) (*AdminProductDetail, error)
-	UpdateProduct(ctx context.Context, id int64, req AdminProductRequest) (*AdminProductDetail, error)
+	CreateProduct(ctx context.Context, req requests.AdminProductRequest) (*AdminProductDetail, error)
+	UpdateProduct(ctx context.Context, id int64, req requests.AdminProductRequest) (*AdminProductDetail, error)
 	DeleteProduct(ctx context.Context, id int64) error
 	ListProducts(ctx context.Context, pagination *utils.Pagination) ([]AdminProductListItem, int64, error)
 	GetProductByID(ctx context.Context, id int64) (*AdminProductDetail, error)
-	CreateVariant(ctx context.Context, productID int64, req AdminVariantRequest) (*AdminVariant, error)
-	UpdateVariant(ctx context.Context, productID, variantID int64, req AdminVariantRequest) (*AdminVariant, error)
+	CreateVariant(ctx context.Context, productID int64, req requests.AdminVariantRequest) (*AdminVariant, error)
+	UpdateVariant(ctx context.Context, productID, variantID int64, req requests.AdminVariantRequest) (*AdminVariant, error)
+	ListVariantAddOns(ctx context.Context, productID, variantID int64) ([]AdminVariantAddOn, error)
+	CreateVariantAddOn(ctx context.Context, productID, variantID, addOnProductID int64) (*AdminVariantAddOn, error)
+	UpdateVariantAddOn(ctx context.Context, productID, variantID, addOnID, addOnProductID int64) (*AdminVariantAddOn, error)
+	DeleteVariantAddOn(ctx context.Context, productID, variantID, addOnID int64) error
 
 	// Public APIs
 	PublicListProducts(ctx context.Context, pagination *utils.Pagination, q string) ([]AdminProductListItem, int64, error)
@@ -100,7 +98,7 @@ func NewService(db *sql.DB, repo Repository) Service {
 	}
 }
 
-func (s *service) CreateProduct(ctx context.Context, req AdminProductRequest) (*AdminProductDetail, error) {
+func (s *service) CreateProduct(ctx context.Context, req requests.AdminProductRequest) (*AdminProductDetail, error) {
 	if req.Name == "" {
 		return nil, fmt.Errorf("name is required")
 	}
@@ -133,7 +131,7 @@ func (s *service) CreateProduct(ctx context.Context, req AdminProductRequest) (*
 	return s.repo.GetAdminProductByID(ctx, productID)
 }
 
-func (s *service) UpdateProduct(ctx context.Context, id int64, req AdminProductRequest) (*AdminProductDetail, error) {
+func (s *service) UpdateProduct(ctx context.Context, id int64, req requests.AdminProductRequest) (*AdminProductDetail, error) {
 	if req.Name == "" {
 		return nil, fmt.Errorf("name is required")
 	}
@@ -218,7 +216,7 @@ func (s *service) PublicGetProduct(ctx context.Context, id int64) (*AdminProduct
 	return product, nil
 }
 
-func (s *service) CreateVariant(ctx context.Context, productID int64, req AdminVariantRequest) (*AdminVariant, error) {
+func (s *service) CreateVariant(ctx context.Context, productID int64, req requests.AdminVariantRequest) (*AdminVariant, error) {
 	if req.SKU == "" {
 		return nil, fmt.Errorf("sku is required")
 	}
@@ -244,7 +242,92 @@ func (s *service) CreateVariant(ctx context.Context, productID int64, req AdminV
 	return s.repo.GetAdminVariantByID(ctx, productID, variantID)
 }
 
-func (s *service) UpdateVariant(ctx context.Context, productID, variantID int64, req AdminVariantRequest) (*AdminVariant, error) {
+func (s *service) ListVariantAddOns(ctx context.Context, productID, variantID int64) ([]AdminVariantAddOn, error) {
+	return s.repo.ListVariantAddOns(ctx, productID, variantID)
+}
+
+func (s *service) CreateVariantAddOn(ctx context.Context, productID, variantID, addOnProductID int64) (*AdminVariantAddOn, error) {
+	if addOnProductID <= 0 {
+		return nil, fmt.Errorf("add_on_product_id is required")
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	addOnID, err := s.repo.CreateVariantAddOn(ctx, tx, productID, variantID, addOnProductID)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	addOns, err := s.repo.ListVariantAddOns(ctx, productID, variantID)
+	if err != nil {
+		return nil, err
+	}
+	for _, ao := range addOns {
+		if ao.ID == addOnID {
+			return &ao, nil
+		}
+	}
+	return nil, sql.ErrNoRows
+}
+
+func (s *service) UpdateVariantAddOn(ctx context.Context, productID, variantID, addOnID, addOnProductID int64) (*AdminVariantAddOn, error) {
+	if addOnProductID <= 0 {
+		return nil, fmt.Errorf("add_on_product_id is required")
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.UpdateVariantAddOn(ctx, tx, productID, variantID, addOnID, addOnProductID); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	addOns, err := s.repo.ListVariantAddOns(ctx, productID, variantID)
+	if err != nil {
+		return nil, err
+	}
+	for _, ao := range addOns {
+		if ao.ID == addOnID {
+			return &ao, nil
+		}
+	}
+	return nil, sql.ErrNoRows
+}
+
+func (s *service) DeleteVariantAddOn(ctx context.Context, productID, variantID, addOnID int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	if err := s.repo.DeleteVariantAddOn(ctx, tx, productID, variantID, addOnID); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *service) UpdateVariant(ctx context.Context, productID, variantID int64, req requests.AdminVariantRequest) (*AdminVariant, error) {
 	if req.SKU == "" {
 		return nil, fmt.Errorf("sku is required")
 	}

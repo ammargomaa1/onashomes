@@ -100,13 +100,13 @@ func main() {
 
 		// Supplier module
 		supplierRepo := suppliers.NewRepository(db)
-		supplierService := suppliers.NewService(supplierRepo)
-		suppliers.RegisterRoutes(api, supplierService)
+		supplierService := suppliers.NewService(*supplierRepo)
+		suppliers.RegisterRoutes(api, *supplierService)
 
 		// Attributes module (admin)
 		attributeRepo := attributes.NewRepository(db)
-		attributeService := attributes.NewService(attributeRepo)
-		attributeController := attributes.NewController(attributeService)
+		attributeService := attributes.NewService(*attributeRepo)
+		attributeController := attributes.NewController(*attributeService)
 		attributes.RegisterRoutes(api, attributeController)
 
 		// Products module (admin + public)

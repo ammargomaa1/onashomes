@@ -6,7 +6,7 @@ import (
 )
 
 func RegisterRoutes(router *gin.RouterGroup, controller *Controller) {
-	admins := router.Group("/admins")
+	admins := router.Group("/admin")
 	{
 		// Public routes
 		admins.POST("/login", controller.Login)

@@ -8,21 +8,26 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/onas/ecommerce-api/internal/api/products/requests"
 	"github.com/onas/ecommerce-api/internal/utils"
 	"gorm.io/gorm"
 )
 
 type Repository interface {
-	CreateProduct(ctx context.Context, tx *sql.Tx, req AdminProductRequest) (int64, error)
-	UpdateProduct(ctx context.Context, tx *sql.Tx, id int64, req AdminProductRequest) error
+	CreateProduct(ctx context.Context, tx *sql.Tx, req requests.AdminProductRequest) (int64, error)
+	UpdateProduct(ctx context.Context, tx *sql.Tx, id int64, req requests.AdminProductRequest) error
 	SoftDeleteProduct(ctx context.Context, tx *sql.Tx, id int64) error
-	ReplaceProductAttributes(ctx context.Context, tx *sql.Tx, productID int64, attrs []AdminProductAttributeRequest) error
+	ReplaceProductAttributes(ctx context.Context, tx *sql.Tx, productID int64, attrs []requests.AdminProductAttributeRequest) error
 	ListAdminProducts(ctx context.Context, pagination *utils.Pagination) ([]AdminProductListItem, int64, error)
 	ListPublicProducts(ctx context.Context, pagination *utils.Pagination, q string) ([]AdminProductListItem, int64, error)
 	GetAdminProductByID(ctx context.Context, id int64) (*AdminProductDetail, error)
-	CreateVariant(ctx context.Context, tx *sql.Tx, productID int64, req AdminVariantRequest) (int64, error)
-	UpdateVariant(ctx context.Context, tx *sql.Tx, productID, variantID int64, req AdminVariantRequest) error
+	CreateVariant(ctx context.Context, tx *sql.Tx, productID int64, req requests.AdminVariantRequest) (int64, error)
+	UpdateVariant(ctx context.Context, tx *sql.Tx, productID, variantID int64, req requests.AdminVariantRequest) error
 	GetAdminVariantByID(ctx context.Context, productID, variantID int64) (*AdminVariant, error)
+	ListVariantAddOns(ctx context.Context, productID, variantID int64) ([]AdminVariantAddOn, error)
+	CreateVariantAddOn(ctx context.Context, tx *sql.Tx, productID, variantID, addOnProductID int64) (int64, error)
+	UpdateVariantAddOn(ctx context.Context, tx *sql.Tx, productID, variantID, addOnID, addOnProductID int64) error
+	DeleteVariantAddOn(ctx context.Context, tx *sql.Tx, productID, variantID, addOnID int64) error
 }
 
 type repository struct {
@@ -33,7 +38,7 @@ func NewRepository(db *gorm.DB) Repository {
 	return &repository{db: db}
 }
 
-func (r *repository) CreateProduct(ctx context.Context, tx *sql.Tx, req AdminProductRequest) (int64, error) {
+func (r *repository) CreateProduct(ctx context.Context, tx *sql.Tx, req requests.AdminProductRequest) (int64, error) {
 	row := tx.QueryRowContext(ctx,
 		"INSERT INTO products (name, description, price, is_active) VALUES ($1, $2, $3, $4) RETURNING id",
 		req.Name, req.Description, req.Price, req.IsActive,
@@ -45,10 +50,159 @@ func (r *repository) CreateProduct(ctx context.Context, tx *sql.Tx, req AdminPro
 	return id, nil
 }
 
-func (r *repository) UpdateProduct(ctx context.Context, tx *sql.Tx, id int64, req AdminProductRequest) error {
+func (r *repository) UpdateProduct(ctx context.Context, tx *sql.Tx, id int64, req requests.AdminProductRequest) error {
 	res, err := tx.ExecContext(ctx,
 		"UPDATE products SET name = $1, description = $2, price = $3, is_active = $4, updated_at = NOW() WHERE id = $5 AND deleted_at IS NULL",
 		req.Name, req.Description, req.Price, req.IsActive, id,
+	)
+	if err != nil {
+		return err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (r *repository) ListVariantAddOns(ctx context.Context, productID, variantID int64) ([]AdminVariantAddOn, error) {
+	sqlDB, err := r.db.DB()
+	if err != nil {
+		return nil, err
+	}
+
+	var exists bool
+	if err := sqlDB.QueryRowContext(ctx,
+		"SELECT EXISTS (SELECT 1 FROM product_variants WHERE id = $1 AND product_id = $2 AND deleted_at IS NULL)",
+		variantID, productID,
+	).Scan(&exists); err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, sql.ErrNoRows
+	}
+
+	rows, err := sqlDB.QueryContext(ctx,
+		"SELECT pva.id, pva.add_on_product_id, p.name FROM product_variant_add_ons pva JOIN products p ON p.id = pva.add_on_product_id WHERE pva.product_variant_id = $1 AND p.deleted_at IS NULL ORDER BY pva.id",
+		variantID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []AdminVariantAddOn
+	for rows.Next() {
+		var ao AdminVariantAddOn
+		if err := rows.Scan(&ao.ID, &ao.ProductID, &ao.Name); err != nil {
+			return nil, err
+		}
+		list = append(list, ao)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
+func (r *repository) CreateVariantAddOn(ctx context.Context, tx *sql.Tx, productID, variantID, addOnProductID int64) (int64, error) {
+	var exists bool
+	if err := tx.QueryRowContext(ctx,
+		"SELECT EXISTS (SELECT 1 FROM product_variants WHERE id = $1 AND product_id = $2 AND deleted_at IS NULL)",
+		variantID, productID,
+	).Scan(&exists); err != nil {
+		return 0, err
+	}
+	if !exists {
+		return 0, sql.ErrNoRows
+	}
+	// prevent duplicate mapping for same variant/add-on product pair
+	if err := tx.QueryRowContext(ctx,
+		"SELECT EXISTS (SELECT 1 FROM product_variant_add_ons WHERE product_variant_id = $1 AND add_on_product_id = $2)",
+		variantID, addOnProductID,
+	).Scan(&exists); err != nil {
+		return 0, err
+	}
+	if exists {
+		return 0, fmt.Errorf("add-on already exists for this variant")
+	}
+	if err := tx.QueryRowContext(ctx,
+		"SELECT EXISTS (SELECT 1 FROM products WHERE id = $1 AND deleted_at IS NULL)",
+		addOnProductID,
+	).Scan(&exists); err != nil {
+		return 0, err
+	}
+	if !exists {
+		return 0, sql.ErrNoRows
+	}
+
+	row := tx.QueryRowContext(ctx,
+		"INSERT INTO product_variant_add_ons (product_variant_id, add_on_product_id) VALUES ($1, $2) RETURNING id",
+		variantID, addOnProductID,
+	)
+	var id int64
+	if err := row.Scan(&id); err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
+func (r *repository) UpdateVariantAddOn(ctx context.Context, tx *sql.Tx, productID, variantID, addOnID, addOnProductID int64) error {
+	var exists bool
+	if err := tx.QueryRowContext(ctx,
+		"SELECT EXISTS (SELECT 1 FROM product_variants WHERE id = $1 AND product_id = $2 AND deleted_at IS NULL)",
+		variantID, productID,
+	).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		return sql.ErrNoRows
+	}
+	if err := tx.QueryRowContext(ctx,
+		"SELECT EXISTS (SELECT 1 FROM products WHERE id = $1 AND deleted_at IS NULL)",
+		addOnProductID,
+	).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		return sql.ErrNoRows
+	}
+
+	res, err := tx.ExecContext(ctx,
+		"UPDATE product_variant_add_ons SET add_on_product_id = $1 WHERE id = $2 AND product_variant_id = $3",
+		addOnProductID, addOnID, variantID,
+	)
+	if err != nil {
+		return err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (r *repository) DeleteVariantAddOn(ctx context.Context, tx *sql.Tx, productID, variantID, addOnID int64) error {
+	var exists bool
+	if err := tx.QueryRowContext(ctx,
+		"SELECT EXISTS (SELECT 1 FROM product_variants WHERE id = $1 AND product_id = $2 AND deleted_at IS NULL)",
+		variantID, productID,
+	).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		return sql.ErrNoRows
+	}
+
+	res, err := tx.ExecContext(ctx,
+		"DELETE FROM product_variant_add_ons WHERE id = $1 AND product_variant_id = $2",
+		addOnID, variantID,
 	)
 	if err != nil {
 		return err
@@ -81,7 +235,7 @@ func (r *repository) SoftDeleteProduct(ctx context.Context, tx *sql.Tx, id int64
 	return nil
 }
 
-func (r *repository) ReplaceProductAttributes(ctx context.Context, tx *sql.Tx, productID int64, attrs []AdminProductAttributeRequest) error {
+func (r *repository) ReplaceProductAttributes(ctx context.Context, tx *sql.Tx, productID int64, attrs []requests.AdminProductAttributeRequest) error {
 	if _, err := tx.ExecContext(ctx, "DELETE FROM product_attribute_values WHERE product_id = $1", productID); err != nil {
 		return err
 	}
@@ -378,7 +532,7 @@ func (r *repository) GetAdminProductByID(ctx context.Context, id int64) (*AdminP
 		imgRows.Close()
 		// add-ons
 		addRows, err := sqlDB.QueryContext(ctx,
-			"SELECT pva.add_on_product_id, p.name FROM product_variant_add_ons pva JOIN products p ON p.id = pva.add_on_product_id WHERE pva.product_variant_id = $1 AND p.deleted_at IS NULL",
+			"SELECT pva.id, pva.add_on_product_id, p.name FROM product_variant_add_ons pva JOIN products p ON p.id = pva.add_on_product_id WHERE pva.product_variant_id = $1 AND p.deleted_at IS NULL ORDER BY pva.id",
 			v.ID,
 		)
 		if err != nil {
@@ -386,7 +540,7 @@ func (r *repository) GetAdminProductByID(ctx context.Context, id int64) (*AdminP
 		}
 		for addRows.Next() {
 			var ao AdminVariantAddOn
-			if err := addRows.Scan(&ao.ProductID, &ao.Name); err != nil {
+			if err := addRows.Scan(&ao.ID, &ao.ProductID, &ao.Name); err != nil {
 				addRows.Close()
 				return nil, err
 			}
@@ -401,7 +555,7 @@ func (r *repository) GetAdminProductByID(ctx context.Context, id int64) (*AdminP
 	return &d, nil
 }
 
-func (r *repository) CreateVariant(ctx context.Context, tx *sql.Tx, productID int64, req AdminVariantRequest) (int64, error) {
+func (r *repository) CreateVariant(ctx context.Context, tx *sql.Tx, productID int64, req requests.AdminVariantRequest) (int64, error) {
 	if err := r.validateVariant(ctx, tx, productID, 0, req); err != nil {
 		return 0, err
 	}
@@ -419,7 +573,7 @@ func (r *repository) CreateVariant(ctx context.Context, tx *sql.Tx, productID in
 	return variantID, nil
 }
 
-func (r *repository) UpdateVariant(ctx context.Context, tx *sql.Tx, productID, variantID int64, req AdminVariantRequest) error {
+func (r *repository) UpdateVariant(ctx context.Context, tx *sql.Tx, productID, variantID int64, req requests.AdminVariantRequest) error {
 	if err := r.validateVariant(ctx, tx, productID, variantID, req); err != nil {
 		return err
 	}
@@ -440,7 +594,7 @@ func (r *repository) UpdateVariant(ctx context.Context, tx *sql.Tx, productID, v
 	return r.replaceVariantDetails(ctx, tx, productID, variantID, req)
 }
 
-func (r *repository) replaceVariantDetails(ctx context.Context, tx *sql.Tx, productID, variantID int64, req AdminVariantRequest) error {
+func (r *repository) replaceVariantDetails(ctx context.Context, tx *sql.Tx, productID, variantID int64, req requests.AdminVariantRequest) error {
 	if _, err := tx.ExecContext(ctx, "DELETE FROM product_variant_attribute_values WHERE product_variant_id = $1", variantID); err != nil {
 		return err
 	}
@@ -539,7 +693,7 @@ func (r *repository) GetAdminVariantByID(ctx context.Context, productID, variant
 	imgRows.Close()
 	// add-ons
 	addRows, err := sqlDB.QueryContext(ctx,
-		"SELECT pva.add_on_product_id, p.name FROM product_variant_add_ons pva JOIN products p ON p.id = pva.add_on_product_id WHERE pva.product_variant_id = $1 AND p.deleted_at IS NULL",
+		"SELECT pva.id, pva.add_on_product_id, p.name FROM product_variant_add_ons pva JOIN products p ON p.id = pva.add_on_product_id WHERE pva.product_variant_id = $1 AND p.deleted_at IS NULL ORDER BY pva.id",
 		v.ID,
 	)
 	if err != nil {
@@ -547,7 +701,7 @@ func (r *repository) GetAdminVariantByID(ctx context.Context, productID, variant
 	}
 	for addRows.Next() {
 		var ao AdminVariantAddOn
-		if err := addRows.Scan(&ao.ProductID, &ao.Name); err != nil {
+		if err := addRows.Scan(&ao.ID, &ao.ProductID, &ao.Name); err != nil {
 			addRows.Close()
 			return nil, err
 		}
@@ -557,7 +711,7 @@ func (r *repository) GetAdminVariantByID(ctx context.Context, productID, variant
 	return &v, nil
 }
 
-func (r *repository) validateVariant(ctx context.Context, tx *sql.Tx, productID, excludeVariantID int64, req AdminVariantRequest) error {
+func (r *repository) validateVariant(ctx context.Context, tx *sql.Tx, productID, excludeVariantID int64, req requests.AdminVariantRequest) error {
 	// ensure product exists
 	var exists bool
 	if err := tx.QueryRowContext(ctx, "SELECT EXISTS (SELECT 1 FROM products WHERE id = $1 AND deleted_at IS NULL)", productID).Scan(&exists); err != nil {

@@ -28,5 +28,11 @@ func RegisterRoutes(router *gin.RouterGroup, controller *Controller) {
 		// Variants
 		adminRoutes.POST("/:id/variants", middleware.RequirePermission("products.update"), controller.AdminCreateVariant)
 		adminRoutes.PUT("/:id/variants/:variantId", middleware.RequirePermission("products.update"), controller.AdminUpdateVariant)
+
+		// Variant add-ons
+		adminRoutes.GET("/:id/variants/:variantId/add-ons", middleware.RequirePermission("products.update"), controller.AdminListVariantAddOns)
+		adminRoutes.POST("/:id/variants/:variantId/add-ons", middleware.RequirePermission("products.update"), controller.AdminCreateVariantAddOn)
+		adminRoutes.PUT("/:id/variants/:variantId/add-ons/:addOnId", middleware.RequirePermission("products.update"), controller.AdminUpdateVariantAddOn)
+		adminRoutes.DELETE("/:id/variants/:variantId/add-ons/:addOnId", middleware.RequirePermission("products.update"), controller.AdminDeleteVariantAddOn)
 	}
 }

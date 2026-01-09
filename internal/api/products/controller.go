@@ -1,10 +1,13 @@
 package products
 
 import (
+	"database/sql"
+	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/onas/ecommerce-api/internal/api/products/requests"
 	"github.com/onas/ecommerce-api/internal/utils"
 )
 
@@ -16,23 +19,9 @@ func NewController(service Service) *Controller {
 	return &Controller{service: service}
 }
 
-type AdminProductAttributeRequest struct {
-	AttributeID     int64   `json:"attribute_id" binding:"required"`
-	SortOrder       int     `json:"sort_order"`
-	AllowedValueIDs []int64 `json:"allowed_value_ids"`
-}
-
-type AdminProductRequest struct {
-	Name        string                         `json:"name" binding:"required"`
-	Description string                         `json:"description"`
-	Price       float64                        `json:"price" binding:"required"`
-	IsActive    bool                           `json:"is_active"`
-	Attributes  []AdminProductAttributeRequest `json:"attributes"`
-}
-
 // AdminCreateProduct handles product creation
 func (c *Controller) AdminCreateProduct(ctx *gin.Context) {
-	var req AdminProductRequest
+	var req requests.AdminProductRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(ctx, err.Error())
 		return
@@ -56,7 +45,7 @@ func (c *Controller) AdminUpdateProduct(ctx *gin.Context) {
 		return
 	}
 
-	var req AdminProductRequest
+	var req requests.AdminProductRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(ctx, err.Error())
 		return
@@ -163,7 +152,7 @@ func (c *Controller) AdminCreateVariant(ctx *gin.Context) {
 		return
 	}
 
-	var req AdminVariantRequest
+	var req requests.AdminVariantRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(ctx, err.Error())
 		return
@@ -194,7 +183,7 @@ func (c *Controller) AdminUpdateVariant(ctx *gin.Context) {
 		return
 	}
 
-	var req AdminVariantRequest
+	var req requests.AdminVariantRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(ctx, err.Error())
 		return
@@ -207,4 +196,145 @@ func (c *Controller) AdminUpdateVariant(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponse(ctx, http.StatusOK, "Variant updated successfully", variant)
+}
+
+// AdminListVariantAddOns lists add-ons for a specific variant
+func (c *Controller) AdminListVariantAddOns(ctx *gin.Context) {
+	productParam := ctx.Param("id")
+	productID, err := strconv.ParseInt(productParam, 10, 64)
+	if err != nil {
+		utils.ValidationErrorResponse(ctx, "invalid product id")
+		return
+	}
+
+	variantParam := ctx.Param("variantId")
+	variantID, err := strconv.ParseInt(variantParam, 10, 64)
+	if err != nil {
+		utils.ValidationErrorResponse(ctx, "invalid variant id")
+		return
+	}
+
+	addOns, err := c.service.ListVariantAddOns(ctx.Request.Context(), productID, variantID)
+	if errors.Is(err, sql.ErrNoRows) {
+		utils.ErrorResponse(ctx, http.StatusNotFound, "Product or variant not found", nil)
+		return
+	}
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, http.StatusOK, "Variant add-ons retrieved successfully", addOns)
+}
+
+// AdminCreateVariantAddOn creates a new add-on mapping for a variant
+func (c *Controller) AdminCreateVariantAddOn(ctx *gin.Context) {
+	productParam := ctx.Param("id")
+	productID, err := strconv.ParseInt(productParam, 10, 64)
+	if err != nil {
+		utils.ValidationErrorResponse(ctx, "invalid product id")
+		return
+	}
+
+	variantParam := ctx.Param("variantId")
+	variantID, err := strconv.ParseInt(variantParam, 10, 64)
+	if err != nil {
+		utils.ValidationErrorResponse(ctx, "invalid variant id")
+		return
+	}
+
+	var req requests.VariantAddOnRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ValidationErrorResponse(ctx, err.Error())
+		return
+	}
+
+	addOn, err := c.service.CreateVariantAddOn(ctx.Request.Context(), productID, variantID, req.AddOnProductID)
+	if errors.Is(err, sql.ErrNoRows) {
+		utils.ErrorResponse(ctx, http.StatusNotFound, "Product, variant or add-on product not found", nil)
+		return
+	}
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, http.StatusCreated, "Variant add-on created successfully", addOn)
+}
+
+// AdminUpdateVariantAddOn updates an existing add-on mapping for a variant
+func (c *Controller) AdminUpdateVariantAddOn(ctx *gin.Context) {
+	productParam := ctx.Param("id")
+	productID, err := strconv.ParseInt(productParam, 10, 64)
+	if err != nil {
+		utils.ValidationErrorResponse(ctx, "invalid product id")
+		return
+	}
+
+	variantParam := ctx.Param("variantId")
+	variantID, err := strconv.ParseInt(variantParam, 10, 64)
+	if err != nil {
+		utils.ValidationErrorResponse(ctx, "invalid variant id")
+		return
+	}
+
+	addOnParam := ctx.Param("addOnId")
+	addOnID, err := strconv.ParseInt(addOnParam, 10, 64)
+	if err != nil {
+		utils.ValidationErrorResponse(ctx, "invalid add-on id")
+		return
+	}
+
+	var req requests.VariantAddOnRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ValidationErrorResponse(ctx, err.Error())
+		return
+	}
+
+	addOn, err := c.service.UpdateVariantAddOn(ctx.Request.Context(), productID, variantID, addOnID, req.AddOnProductID)
+	if errors.Is(err, sql.ErrNoRows) {
+		utils.ErrorResponse(ctx, http.StatusNotFound, "Product, variant or add-on not found", nil)
+		return
+	}
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(ctx, http.StatusOK, "Variant add-on updated successfully", addOn)
+}
+
+// AdminDeleteVariantAddOn deletes an add-on mapping from a variant
+func (c *Controller) AdminDeleteVariantAddOn(ctx *gin.Context) {
+	productParam := ctx.Param("id")
+	productID, err := strconv.ParseInt(productParam, 10, 64)
+	if err != nil {
+		utils.ValidationErrorResponse(ctx, "invalid product id")
+		return
+	}
+
+	variantParam := ctx.Param("variantId")
+	variantID, err := strconv.ParseInt(variantParam, 10, 64)
+	if err != nil {
+		utils.ValidationErrorResponse(ctx, "invalid variant id")
+		return
+	}
+
+	addOnParam := ctx.Param("addOnId")
+	addOnID, err := strconv.ParseInt(addOnParam, 10, 64)
+	if err != nil {
+		utils.ValidationErrorResponse(ctx, "invalid add-on id")
+		return
+	}
+
+	if err := c.service.DeleteVariantAddOn(ctx.Request.Context(), productID, variantID, addOnID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			utils.ErrorResponse(ctx, http.StatusNotFound, "Product, variant or add-on not found", nil)
+			return
+		}
+		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	ctx.Status(http.StatusNoContent)
 }

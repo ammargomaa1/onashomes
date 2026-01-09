@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/onas/ecommerce-api/internal/api/products/requests"
 	"github.com/onas/ecommerce-api/internal/utils"
 )
 
@@ -18,11 +19,11 @@ type fakeService struct {
 }
 
 // Implement Service interface for fakeService
-func (f *fakeService) CreateProduct(ctx context.Context, req AdminProductRequest) (*AdminProductDetail, error) {
+func (f *fakeService) CreateProduct(ctx context.Context, req requests.AdminProductRequest) (*AdminProductDetail, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (f *fakeService) UpdateProduct(ctx context.Context, id int64, req AdminProductRequest) (*AdminProductDetail, error) {
+func (f *fakeService) UpdateProduct(ctx context.Context, id int64, req requests.AdminProductRequest) (*AdminProductDetail, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -38,12 +39,28 @@ func (f *fakeService) GetProductByID(ctx context.Context, id int64) (*AdminProdu
 	return nil, errors.New("not implemented")
 }
 
-func (f *fakeService) CreateVariant(ctx context.Context, productID int64, req AdminVariantRequest) (*AdminVariant, error) {
+func (f *fakeService) CreateVariant(ctx context.Context, productID int64, req requests.AdminVariantRequest) (*AdminVariant, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (f *fakeService) UpdateVariant(ctx context.Context, productID, variantID int64, req AdminVariantRequest) (*AdminVariant, error) {
+func (f *fakeService) UpdateVariant(ctx context.Context, productID, variantID int64, req requests.AdminVariantRequest) (*AdminVariant, error) {
 	return nil, errors.New("not implemented")
+}
+
+func (f *fakeService) ListVariantAddOns(ctx context.Context, productID, variantID int64) ([]AdminVariantAddOn, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (f *fakeService) CreateVariantAddOn(ctx context.Context, productID, variantID, addOnProductID int64) (*AdminVariantAddOn, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (f *fakeService) UpdateVariantAddOn(ctx context.Context, productID, variantID, addOnID, addOnProductID int64) (*AdminVariantAddOn, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (f *fakeService) DeleteVariantAddOn(ctx context.Context, productID, variantID, addOnID int64) error {
+	return errors.New("not implemented")
 }
 
 func (f *fakeService) PublicListProducts(ctx context.Context, pg *utils.Pagination, q string) ([]AdminProductListItem, int64, error) {

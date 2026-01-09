@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/onas/ecommerce-api/internal/api/attributes/requests"
 	"github.com/onas/ecommerce-api/internal/utils"
 )
 
@@ -22,13 +23,13 @@ func NewController(service Service) *Controller {
 
 // CreateAttribute handles POST /api/admin/attributes
 func (c *Controller) CreateAttribute(ctx *gin.Context) {
-	var req AttributeRequest
+	var req requests.AttributeRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(ctx, err.Error())
 		return
 	}
 
-	attr, err := c.service.CreateAttribute(ctx.Request.Context(), req)
+	attr, err := c.service.CreateAttribute(req)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
@@ -46,13 +47,13 @@ func (c *Controller) UpdateAttribute(ctx *gin.Context) {
 		return
 	}
 
-	var req AttributeRequest
+	var req requests.AttributeRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(ctx, err.Error())
 		return
 	}
 
-	attr, err := c.service.UpdateAttribute(ctx.Request.Context(), id, req)
+	attr, err := c.service.UpdateAttribute(id, req)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
@@ -65,7 +66,7 @@ func (c *Controller) UpdateAttribute(ctx *gin.Context) {
 func (c *Controller) ListAttributes(ctx *gin.Context) {
 	pagination := utils.ParsePaginationParams(ctx)
 
-	attrs, total, err := c.service.ListAttributes(ctx.Request.Context(), pagination)
+	attrs, total, err := c.service.ListAttributes(pagination)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Failed to retrieve attributes", err.Error())
 		return
@@ -79,7 +80,7 @@ func (c *Controller) ListAttributes(ctx *gin.Context) {
 func (c *Controller) ListDeletedAttributes(ctx *gin.Context) {
 	pagination := utils.ParsePaginationParams(ctx)
 
-	attrs, total, err := c.service.ListDeletedAttributes(ctx.Request.Context(), pagination)
+	attrs, total, err := c.service.ListDeletedAttributes(pagination)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Failed to retrieve deleted attributes", err.Error())
 		return
@@ -98,7 +99,7 @@ func (c *Controller) GetAttribute(ctx *gin.Context) {
 		return
 	}
 
-	attr, err := c.service.GetAttributeByID(ctx.Request.Context(), id)
+	attr, err := c.service.GetAttributeByID(id)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusNotFound, "Attribute not found", nil)
 		return
@@ -116,7 +117,7 @@ func (c *Controller) DeleteAttribute(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.service.DeleteAttribute(ctx.Request.Context(), id); err != nil {
+	if err := c.service.DeleteAttribute(id); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
@@ -133,7 +134,7 @@ func (c *Controller) RecoverAttribute(ctx *gin.Context) {
 		return
 	}
 
-	attr, err := c.service.RecoverAttribute(ctx.Request.Context(), id)
+	attr, err := c.service.RecoverAttribute(id)
 	if errors.Is(err, sql.ErrNoRows) {
 		utils.ErrorResponse(ctx, http.StatusNotFound, "Attribute not found", nil)
 		return
@@ -157,7 +158,7 @@ func (c *Controller) ListAttributeValues(ctx *gin.Context) {
 
 	pagination := utils.ParsePaginationParams(ctx)
 
-	values, total, err := c.service.ListAttributeValues(ctx.Request.Context(), attributeID, pagination)
+	values, total, err := c.service.ListAttributeValues(attributeID, pagination)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Failed to retrieve attribute values", err.Error())
 		return
@@ -178,7 +179,7 @@ func (c *Controller) ListDeletedAttributeValues(ctx *gin.Context) {
 
 	pagination := utils.ParsePaginationParams(ctx)
 
-	values, total, err := c.service.ListDeletedAttributeValues(ctx.Request.Context(), attributeID, pagination)
+	values, total, err := c.service.ListDeletedAttributeValues(attributeID, pagination)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Failed to retrieve deleted attribute values", err.Error())
 		return
@@ -197,13 +198,13 @@ func (c *Controller) CreateAttributeValue(ctx *gin.Context) {
 		return
 	}
 
-	var req AttributeValueRequest
+	var req requests.AttributeValueRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(ctx, err.Error())
 		return
 	}
 
-	value, err := c.service.CreateAttributeValue(ctx.Request.Context(), attributeID, req)
+	value, err := c.service.CreateAttributeValue(attributeID, req)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
@@ -228,13 +229,13 @@ func (c *Controller) UpdateAttributeValue(ctx *gin.Context) {
 		return
 	}
 
-	var req AttributeValueRequest
+	var req requests.AttributeValueRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(ctx, err.Error())
 		return
 	}
 
-	value, err := c.service.UpdateAttributeValue(ctx.Request.Context(), attributeID, valueID, req)
+	value, err := c.service.UpdateAttributeValue(attributeID, valueID, req)
 	if errors.Is(err, sql.ErrNoRows) {
 		utils.ErrorResponse(ctx, 404, "some entities can not be found", nil)
 		return
@@ -264,7 +265,7 @@ func (c *Controller) RecoverAttributeValue(ctx *gin.Context) {
 		return
 	}
 
-	value, err := c.service.RecoverAttributeValue(ctx.Request.Context(), attributeID, valueID)
+	value, err := c.service.RecoverAttributeValue(attributeID, valueID)
 	if errors.Is(err, sql.ErrNoRows) {
 		utils.ErrorResponse(ctx, http.StatusNotFound, "some entities can not be found", nil)
 		return
@@ -293,7 +294,7 @@ func (c *Controller) DeleteAttributeValue(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.service.DeleteAttributeValue(ctx.Request.Context(), attributeID, valueID); err != nil {
+	if err := c.service.DeleteAttributeValue(attributeID, valueID); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
 		return
 	}

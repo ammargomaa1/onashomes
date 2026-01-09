@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	suppreq "github.com/onas/ecommerce-api/internal/api/suppliers/requests"
 	"github.com/onas/ecommerce-api/internal/utils"
 )
 
@@ -16,14 +17,8 @@ func NewHandler(service Service) *Handler {
 	return &Handler{service: service}
 }
 
-type createRequest struct {
-	CompanyName       string `json:"company_name" binding:"required"`
-	ContactPersonName string `json:"contact_person_name" binding:"required"`
-	ContactNumber     string `json:"contact_number" binding:"required"`
-}
-
 func (h *Handler) Create(c *gin.Context) {
-	var req createRequest
+	var req suppreq.CreateSupplierRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -48,12 +43,6 @@ func (h *Handler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, supplier)
 }
 
-type updateRequest struct {
-	CompanyName       string `json:"company_name" binding:"required"`
-	ContactPersonName string `json:"contact_person_name" binding:"required"`
-	ContactNumber     string `json:"contact_number" binding:"required"`
-}
-
 func (h *Handler) Update(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -61,7 +50,7 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	var req updateRequest
+	var req suppreq.UpdateSupplierRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -122,18 +111,7 @@ func (h *Handler) Activate(c *gin.Context) {
 		return
 	}
 
-	adminID, exists := c.Get("entity_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-	adminIDInt64, ok := adminID.(int64)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid admin id"})
-		return
-	}
-
-	if err := h.service.Activate(id, adminIDInt64); err != nil {
+	if err := h.service.Activate(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -148,18 +126,8 @@ func (h *Handler) Deactivate(c *gin.Context) {
 		return
 	}
 
-	adminID, exists := c.Get("entity_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-	adminIDInt64, ok := adminID.(int64)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid admin id"})
-		return
-	}
 
-	if err := h.service.Deactivate(id, adminIDInt64); err != nil {
+	if err := h.service.Deactivate(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

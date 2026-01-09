@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	adminreq "github.com/onas/ecommerce-api/internal/api/admins/requests"
 	"github.com/onas/ecommerce-api/internal/utils"
 )
 
@@ -15,31 +16,8 @@ func NewController(service Service) *Controller {
 	return &Controller{service: service}
 }
 
-type CreateAdminRequest struct {
-	Email     string `json:"email" binding:"required,email"`
-	Password  string `json:"password" binding:"required,min=6"`
-	FirstName string `json:"first_name" binding:"required"`
-	LastName  string `json:"last_name" binding:"required"`
-	RoleID    int64  `json:"role_id" binding:"required"`
-}
-
-type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
-}
-
-type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
-}
-
-type UpdateAdminRequest struct {
-	FirstName string `json:"first_name" binding:"required"`
-	LastName  string `json:"last_name" binding:"required"`
-	RoleID    int64  `json:"role_id" binding:"required"`
-}
-
 func (ctrl *Controller) Create(c *gin.Context) {
-	var req CreateAdminRequest
+	var req adminreq.CreateAdminRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(c, err.Error())
 		return
@@ -55,7 +33,7 @@ func (ctrl *Controller) Create(c *gin.Context) {
 }
 
 func (ctrl *Controller) Login(c *gin.Context) {
-	var req LoginRequest
+	var req adminreq.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(c, err.Error())
 		return
@@ -74,7 +52,7 @@ func (ctrl *Controller) Login(c *gin.Context) {
 }
 
 func (ctrl *Controller) RefreshToken(c *gin.Context) {
-	var req RefreshTokenRequest
+	var req adminreq.RefreshTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(c, err.Error())
 		return
@@ -116,7 +94,7 @@ func (ctrl *Controller) Update(c *gin.Context) {
 		return
 	}
 
-	var req UpdateAdminRequest
+	var req adminreq.UpdateAdminRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(c, err.Error())
 		return

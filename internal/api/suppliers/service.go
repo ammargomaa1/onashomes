@@ -8,24 +8,15 @@ import (
 	"github.com/onas/ecommerce-api/internal/utils"
 )
 
-type Service interface {
-	Create(companyName, contactPersonName, contactNumber string, createdBy int64) (*models.Supplier, error)
-	Update(id int64, companyName, contactPersonName, contactNumber string, updatedBy int64) (*models.Supplier, error)
-	GetByID(id int64) (*models.Supplier, error)
-	List(pagination *utils.Pagination) ([]models.Supplier, int64, error)
-	Activate(id int64, updatedBy int64) error
-	Deactivate(id int64, updatedBy int64) error
-}
-
-type service struct {
+type Service struct {
 	repo Repository
 }
 
-func NewService(repo Repository) Service {
-	return &service{repo: repo}
+func NewService(repo Repository) *Service {
+	return &Service{repo: repo}
 }
 
-func (s *service) Create(companyName, contactPersonName, contactNumber string, createdBy int64) (*models.Supplier, error) {
+func (s *Service) Create(companyName, contactPersonName, contactNumber string, createdBy int64) (*models.Supplier, error) {
 	supplier := &models.Supplier{
 		CompanyName:       companyName,
 		ContactPersonName: contactPersonName,
@@ -43,7 +34,7 @@ func (s *service) Create(companyName, contactPersonName, contactNumber string, c
 	return s.repo.GetByID(supplier.ID)
 }
 
-func (s *service) Update(id int64, companyName, contactPersonName, contactNumber string, updatedBy int64) (*models.Supplier, error) {
+func (s *Service) Update(id int64, companyName, contactPersonName, contactNumber string, updatedBy int64) (*models.Supplier, error) {
 	supplier, err := s.repo.GetByID(id)
 	if err != nil {
 		return nil, errors.New("supplier not found")
@@ -62,18 +53,18 @@ func (s *service) Update(id int64, companyName, contactPersonName, contactNumber
 	return s.repo.GetByID(id)
 }
 
-func (s *service) GetByID(id int64) (*models.Supplier, error) {
+func (s *Service) GetByID(id int64) (*models.Supplier, error) {
 	return s.repo.GetByID(id)
 }
 
-func (s *service) List(pagination *utils.Pagination) ([]models.Supplier, int64, error) {
+func (s *Service) List(pagination *utils.Pagination) ([]models.Supplier, int64, error) {
 	return s.repo.List(pagination)
 }
 
-func (s *service) Activate(id int64, updatedBy int64) error {
-	return s.repo.ToggleStatus(id, true, updatedBy)
+func (s *Service) Activate(id int64) error {
+	return s.repo.ToggleStatus(id, true)
 }
 
-func (s *service) Deactivate(id int64, updatedBy int64) error {
-	return s.repo.ToggleStatus(id, false, updatedBy)
+func (s *Service) Deactivate(id int64) error {
+	return s.repo.ToggleStatus(id, false)
 }
