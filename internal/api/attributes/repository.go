@@ -2,6 +2,7 @@ package attributes
 
 import (
 	"github.com/onas/ecommerce-api/internal/api/attributes/requests"
+	"github.com/onas/ecommerce-api/internal/models"
 	"github.com/onas/ecommerce-api/internal/utils"
 	"gorm.io/gorm"
 )
@@ -24,8 +25,8 @@ func (r *Repository) CreateAttribute(req requests.AttributeRequest) (int64, erro
 	var id int64
 
 	err := r.db.Raw(
-		"INSERT INTO attributes (name, is_active) VALUES ($1, $2) RETURNING id",
-		req.Name, req.IsActive,
+		"INSERT INTO attributes (name) VALUES ($1) RETURNING id",
+		req.Name,
 	).Scan(&id).Error
 
 
@@ -35,8 +36,8 @@ func (r *Repository) CreateAttribute(req requests.AttributeRequest) (int64, erro
 func (r *Repository) UpdateAttribute(id int64, req requests.AttributeRequest) error {
 
 	err := r.db.Exec(
-		"UPDATE attributes SET name = $1, is_active = $2, updated_at = NOW() WHERE id = $3 AND deleted_at IS NULL",
-		req.Name, req.IsActive, id,
+		"UPDATE attributes SET name = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL",
+		req.Name, id,
 	).Error
 
 	return err
@@ -56,7 +57,7 @@ func (r *Repository) RestoreAttributeValue(attributeID, valueID int64) error {
 func (r *Repository) SoftDeleteAttribute(id int64) error {
 	// Soft delete attribute
 	err := r.db.Exec(
-		"UPDATE attributes SET deleted_at = NOW(), is_active = FALSE WHERE id = $1 AND deleted_at IS NULL",
+		"UPDATE attributes SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL",
 		id,
 	).Error
 
@@ -95,25 +96,14 @@ func (r *Repository) RestoreAttribute(id int64) error {
 }
 
 func (r *Repository) ListAttributes(pagination *utils.Pagination) ([]AttributeListItem, int64, error) {
-
-	var total int64
-	if err := r.db.Raw(
-		"SELECT COUNT(*) FROM attributes WHERE deleted_at IS NULL",
-	).Scan(&total).Error; err != nil {
-		return nil, 0, err
-	}
-	offset := (pagination.Page - 1) * pagination.Limit
 	
 	var list []AttributeListItem
-	err := r.db.Raw(
-		"SELECT id, name, is_active FROM attributes WHERE deleted_at IS NULL ORDER BY id DESC LIMIT $1 OFFSET $2",
-		pagination.Limit, offset,
-	).Scan(&list).Error
+	err := pagination.Paginate(r.db, models.Attribute{}).Scan(&list).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return list, total, nil
+	return list, pagination.Total, nil
 }
 
 // ListDeletedAttributeValues returns soft-deleted values for a given attribute.
@@ -162,7 +152,7 @@ func (r *Repository) GetAttributeByID(id int64) (*AttributeDetail, error) {
 
 	var d AttributeDetail
 	if err := r.db.Raw(
-		"SELECT id, name, is_active FROM attributes WHERE id = $1 AND deleted_at IS NULL",
+		"SELECT id, name FROM attributes WHERE id = $1 AND deleted_at IS NULL",
 		id,
 	).Scan(&d).Error; err != nil {
 		return nil, err

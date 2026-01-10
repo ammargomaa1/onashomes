@@ -21,7 +21,6 @@ CREATE INDEX idx_products_deleted_at ON products (deleted_at);
 CREATE TABLE attributes (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMPTZ

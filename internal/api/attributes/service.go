@@ -2,6 +2,7 @@ package attributes
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/onas/ecommerce-api/internal/api/attributes/requests"
 	"github.com/onas/ecommerce-api/internal/utils"
@@ -9,9 +10,9 @@ import (
 
 // AttributeListItem is a lightweight representation used in list responses.
 type AttributeListItem struct {
-	ID       int64  `json:"id"`
-	Name     string `json:"name"`
-	IsActive bool   `json:"is_active"`
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // AttributeValue represents a single attribute value.

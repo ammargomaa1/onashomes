@@ -52,29 +52,36 @@ func ParsePaginationParams(c *gin.Context) *Pagination {
 }
 
 func (p *Pagination) Paginate(db *gorm.DB, model interface{}) *gorm.DB {
-    // Count total rows
-    var total int64
-    if err := db.Model(model).Count(&total).Error; err == nil {
-        p.SetTotal(total)
-    }
+	var total int64
+	if model != nil {
+		if err := db.Model(model).Count(&total).Error; err == nil {
+			p.SetTotal(total)
+		}
+	}
 
-    // Apply offset/limit
-    offset := (p.Page - 1) * p.Limit
-    query := db.Model(model).Offset(offset).Limit(p.Limit)
+	offset := (p.Page - 1) * p.Limit
 
-    // Apply order
-    if p.Sort != "" {
-        orderClause := p.Sort
-        if p.Order != "" {
-            orderClause += " " + p.Order
-        }
-        query = query.Order(orderClause)
-    }
+	var query *gorm.DB
+	if model != nil {
+		query = db.Model(model).Offset(offset).Limit(p.Limit)
+	} else {
+		query = db.Offset(offset).Limit(p.Limit)
+	}
 
-    return query
+	if err := query.Count(&total).Error; err == nil {
+		p.SetTotal(total)
+	}
+
+	if p.Sort != "" {
+		orderClause := p.Sort
+		if p.Order != "" {
+			orderClause += " " + p.Order
+		}
+		query = query.Order(orderClause)
+	}
+
+	return query
 }
-
-
 
 // SetTotal sets the total count and calculates total pages
 func (p *Pagination) SetTotal(total int64) {
