@@ -19,62 +19,71 @@ type fakeService struct {
 }
 
 // Implement Service interface for fakeService
-func (f *fakeService) CreateProduct(ctx context.Context, req requests.AdminProductRequest) (*AdminProductDetail, error) {
-	return nil, errors.New("not implemented")
+func (f *fakeService) CreateProduct(ctx context.Context, req requests.AdminProductRequest) utils.IResource {
+	return utils.NewInternalErrorResource("not implemented", nil)
 }
 
-func (f *fakeService) UpdateProduct(ctx context.Context, id int64, req requests.AdminProductRequest) (*AdminProductDetail, error) {
-	return nil, errors.New("not implemented")
+func (f *fakeService) UpdateProduct(ctx context.Context, id int64, req requests.AdminProductRequest) utils.IResource {
+	return utils.NewInternalErrorResource("not implemented", nil)
 }
 
-func (f *fakeService) DeleteProduct(ctx context.Context, id int64) error {
-	return errors.New("not implemented")
+func (f *fakeService) DeleteProduct(ctx context.Context, id int64) utils.IResource {
+	return utils.NewInternalErrorResource("not implemented", nil)
 }
 
-func (f *fakeService) ListProducts(ctx context.Context, pagination *utils.Pagination) ([]AdminProductListItem, int64, error) {
-	return nil, 0, errors.New("not implemented")
+func (f *fakeService) ListProducts(ctx context.Context, pagination *utils.Pagination) utils.IResource {
+	return utils.NewInternalErrorResource("not implemented", nil)
 }
 
-func (f *fakeService) GetProductByID(ctx context.Context, id int64) (*AdminProductDetail, error) {
-	return nil, errors.New("not implemented")
+func (f *fakeService) GetProductByID(ctx context.Context, id int64) utils.IResource {
+	return utils.NewInternalErrorResource("not implemented", nil)
 }
 
-func (f *fakeService) CreateVariant(ctx context.Context, productID int64, req requests.AdminVariantRequest) (*AdminVariant, error) {
-	return nil, errors.New("not implemented")
+func (f *fakeService) CreateVariant(ctx context.Context, productID int64, req requests.AdminVariantRequest) utils.IResource {
+	return utils.NewInternalErrorResource("not implemented", nil)
 }
 
-func (f *fakeService) UpdateVariant(ctx context.Context, productID, variantID int64, req requests.AdminVariantRequest) (*AdminVariant, error) {
-	return nil, errors.New("not implemented")
+func (f *fakeService) UpdateVariant(ctx context.Context, productID, variantID int64, req requests.AdminVariantRequest) utils.IResource {
+	return utils.NewInternalErrorResource("not implemented", nil)
 }
 
-func (f *fakeService) ListVariantAddOns(ctx context.Context, productID, variantID int64) ([]AdminVariantAddOn, error) {
-	return nil, errors.New("not implemented")
+func (f *fakeService) ListVariantAddOns(ctx context.Context, productID, variantID int64) utils.IResource {
+	return utils.NewInternalErrorResource("not implemented", nil)
 }
 
-func (f *fakeService) CreateVariantAddOn(ctx context.Context, productID, variantID, addOnProductID int64) (*AdminVariantAddOn, error) {
-	return nil, errors.New("not implemented")
+func (f *fakeService) CreateVariantAddOn(ctx context.Context, productID, variantID, addOnProductID int64) utils.IResource {
+	return utils.NewInternalErrorResource("not implemented", nil)
 }
 
-func (f *fakeService) UpdateVariantAddOn(ctx context.Context, productID, variantID, addOnID, addOnProductID int64) (*AdminVariantAddOn, error) {
-	return nil, errors.New("not implemented")
+func (f *fakeService) UpdateVariantAddOn(ctx context.Context, productID, variantID, addOnID, addOnProductID int64) utils.IResource {
+	return utils.NewInternalErrorResource("not implemented", nil)
 }
 
-func (f *fakeService) DeleteVariantAddOn(ctx context.Context, productID, variantID, addOnID int64) error {
-	return errors.New("not implemented")
+func (f *fakeService) DeleteVariantAddOn(ctx context.Context, productID, variantID, addOnID int64) utils.IResource {
+	return utils.NewInternalErrorResource("not implemented", nil)
 }
 
-func (f *fakeService) PublicListProducts(ctx context.Context, pg *utils.Pagination, q string) ([]AdminProductListItem, int64, error) {
+func (f *fakeService) PublicListProducts(ctx context.Context, pg *utils.Pagination, q string) utils.IResource {
 	if f.publicListFn != nil {
-		return f.publicListFn(ctx, pg, q)
+		items, total, err := f.publicListFn(ctx, pg, q)
+		if err != nil {
+			return utils.NewInternalErrorResource("Failed to retrieve products", err.Error())
+		}
+		pg.SetTotal(total)
+		return utils.NewPaginatedOKResource("Products retrieved successfully", items, pg.GetMeta())
 	}
-	return nil, 0, nil
+	return utils.NewPaginatedOKResource("Products retrieved successfully", []AdminProductListItem{}, pg.GetMeta())
 }
 
-func (f *fakeService) PublicGetProduct(ctx context.Context, id int64) (*AdminProductDetail, error) {
+func (f *fakeService) PublicGetProduct(ctx context.Context, id int64) utils.IResource {
 	if f.publicGetFn != nil {
-		return f.publicGetFn(ctx, id)
+		product, err := f.publicGetFn(ctx, id)
+		if err != nil || product == nil {
+			return utils.NewNotFoundResource("Product not found", nil)
+		}
+		return utils.NewOKResource("Product retrieved successfully", product)
 	}
-	return nil, nil
+	return utils.NewNotFoundResource("Product not found", nil)
 }
 
 func TestPublicListProducts_Success(t *testing.T) {

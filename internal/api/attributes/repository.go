@@ -1,6 +1,8 @@
 package attributes
 
 import (
+	"encoding/json"
+
 	"github.com/onas/ecommerce-api/internal/api/attributes/requests"
 	"github.com/onas/ecommerce-api/internal/models"
 	"github.com/onas/ecommerce-api/internal/utils"
@@ -20,11 +22,11 @@ func NewRepository(db *gorm.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) CreateAttribute(req requests.AttributeRequest) (int64, error) {
+func (r *Repository) CreateAttribute(db *gorm.DB, req requests.AttributeRequest) (int64, error) {
 
 	var id int64
 
-	err := r.db.Raw(
+	err := db.Raw(
 		"INSERT INTO attributes (name) VALUES ($1) RETURNING id",
 		req.Name,
 	).Scan(&id).Error
@@ -148,23 +150,17 @@ func (r *Repository) ListDeletedAttributes(pagination *utils.Pagination) ([]Attr
 	return list, total, err
 }
 
-func (r *Repository) GetAttributeByID(id int64) (*AttributeDetail, error) {
+func (r *Repository) GetAttributeByID(db *gorm.DB, id int64) (*requests.AttributeListItem, error) {
 
-	var d AttributeDetail
-	if err := r.db.Raw(
+	var d requests.AttributeListItem
+	if err := db.Raw(
 		"SELECT id, name FROM attributes WHERE id = $1 AND deleted_at IS NULL",
 		id,
 	).Scan(&d).Error; err != nil {
 		return nil, err
 	}
 
-	var v AttributeValue
-	err := r.db.Raw(
-		"SELECT id, value, sort_order, is_active FROM attribute_values WHERE attribute_id = $1 AND deleted_at IS NULL ORDER BY sort_order, value",
-		id,
-	).Scan(&v).Error
-
-	return &d, err
+	return &d, nil
 }
 
 func (r *Repository) ListAttributeValues(attributeID int64, pagination *utils.Pagination) ([]AttributeValue, int64, error) {
@@ -207,6 +203,86 @@ func (r *Repository) CreateAttributeValue(attributeID int64, req requests.Attrib
 
 	return id, err
 }
+
+func (r *Repository) CreateAttributeValuesBulk(
+	db *gorm.DB,
+	attributeID int64,
+	reqs []requests.AttributeValueRequest,
+) ([]int64, error) {
+
+	if len(reqs) == 0 {
+		return []int64{}, nil
+	}
+
+	// 1. Ensure attribute exists and is not soft-deleted
+	var exists bool
+	if err := db.Raw(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM attributes
+			WHERE id = $1
+			  AND deleted_at IS NULL
+		)
+	`, attributeID).Scan(&exists).Error; err != nil {
+		return nil, err
+	}
+
+	if !exists {
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	// 2. Marshal requests into JSON
+	payload, err := json.Marshal(reqs)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Bulk insert using jsonb_to_recordset
+	var ids []int64
+	err = db.Raw(`
+		INSERT INTO attribute_values (
+			attribute_id,
+			value,
+			sort_order,
+			is_active
+		)
+		SELECT
+			$1 AS attribute_id,
+			v.value,
+			v.sort_order,
+			v.is_active
+		FROM jsonb_to_recordset($2::jsonb) AS v(
+			value TEXT,
+			sort_order INT,
+			is_active BOOLEAN
+		)
+		RETURNING id
+	`, attributeID, payload).Scan(&ids).Error
+
+	return ids, err
+}
+
+func (r *Repository) GetAttributeValuesResponse(
+	attributeID int64,
+) ([]requests.AttributeValuesResponse, error) {
+
+	var values []requests.AttributeValuesResponse
+
+	err := r.db.Raw(`
+		SELECT
+			id,
+			value,
+			sort_order,
+			is_active
+		FROM attribute_values
+		WHERE attribute_id = $1
+		  AND deleted_at IS NULL
+		ORDER BY sort_order, value
+	`, attributeID).Scan(&values).Error
+
+	return values, err
+}
+
 
 func (r *Repository) UpdateAttributeValue(attributeID, valueID int64, req requests.AttributeValueRequest) error {
 	err := r.db.Raw(

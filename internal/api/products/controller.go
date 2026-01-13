@@ -1,9 +1,6 @@
 package products
 
 import (
-	"database/sql"
-	"errors"
-	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -27,13 +24,8 @@ func (c *Controller) AdminCreateProduct(ctx *gin.Context) {
 		return
 	}
 
-	product, err := c.service.CreateProduct(ctx.Request.Context(), req)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, http.StatusCreated, "Product created successfully", product)
+	res := c.service.CreateProduct(ctx.Request.Context(), req)
+	utils.WriteResource(ctx, res)
 }
 
 // AdminUpdateProduct handles product update
@@ -51,27 +43,16 @@ func (c *Controller) AdminUpdateProduct(ctx *gin.Context) {
 		return
 	}
 
-	product, err := c.service.UpdateProduct(ctx.Request.Context(), id, req)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, http.StatusOK, "Product updated successfully", product)
+	res := c.service.UpdateProduct(ctx.Request.Context(), id, req)
+	utils.WriteResource(ctx, res)
 }
 
 // AdminListProducts lists products for admin
 func (c *Controller) AdminListProducts(ctx *gin.Context) {
 	pagination := utils.ParsePaginationParams(ctx)
 
-	products, total, err := c.service.ListProducts(ctx.Request.Context(), pagination)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Failed to retrieve products", err.Error())
-		return
-	}
-
-	pagination.SetTotal(total)
-	utils.SuccessResponseWithMeta(ctx, http.StatusOK, "Products retrieved successfully", products, pagination.GetMeta())
+	res := c.service.ListProducts(ctx.Request.Context(), pagination)
+	utils.WriteResource(ctx, res)
 }
 
 // AdminGetProduct returns a single product with variants and configuration
@@ -83,13 +64,8 @@ func (c *Controller) AdminGetProduct(ctx *gin.Context) {
 		return
 	}
 
-	product, err := c.service.GetProductByID(ctx.Request.Context(), id)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, "Product not found", nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, http.StatusOK, "Product retrieved successfully", product)
+	res := c.service.GetProductByID(ctx.Request.Context(), id)
+	utils.WriteResource(ctx, res)
 }
 
 // PublicListProducts lists active products for public consumers
@@ -97,14 +73,8 @@ func (c *Controller) PublicListProducts(ctx *gin.Context) {
 	pagination := utils.ParsePaginationParams(ctx)
 	q := ctx.Query("q")
 
-	products, total, err := c.service.PublicListProducts(ctx.Request.Context(), pagination, q)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Failed to retrieve products", err.Error())
-		return
-	}
-
-	pagination.SetTotal(total)
-	utils.SuccessResponseWithMeta(ctx, http.StatusOK, "Products retrieved successfully", products, pagination.GetMeta())
+	res := c.service.PublicListProducts(ctx.Request.Context(), pagination, q)
+	utils.WriteResource(ctx, res)
 }
 
 // PublicGetProduct returns a single active product with active variants for public consumers
@@ -116,14 +86,8 @@ func (c *Controller) PublicGetProduct(ctx *gin.Context) {
 		return
 	}
 
-	product, err := c.service.PublicGetProduct(ctx.Request.Context(), id)
-	if err != nil {
-		// For public API, treat any error as not found to avoid leaking internals
-		utils.ErrorResponse(ctx, http.StatusNotFound, "Product not found", nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, http.StatusOK, "Product retrieved successfully", product)
+	res := c.service.PublicGetProduct(ctx.Request.Context(), id)
+	utils.WriteResource(ctx, res)
 }
 
 // AdminDeleteProduct performs a soft delete
@@ -135,12 +99,8 @@ func (c *Controller) AdminDeleteProduct(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.service.DeleteProduct(ctx.Request.Context(), id); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	ctx.Status(http.StatusNoContent)
+	res := c.service.DeleteProduct(ctx.Request.Context(), id)
+	utils.WriteResource(ctx, res)
 }
 
 // AdminCreateVariant creates a variant for a product
@@ -158,13 +118,8 @@ func (c *Controller) AdminCreateVariant(ctx *gin.Context) {
 		return
 	}
 
-	variant, err := c.service.CreateVariant(ctx.Request.Context(), productID, req)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, http.StatusCreated, "Variant created successfully", variant)
+	res := c.service.CreateVariant(ctx.Request.Context(), productID, req)
+	utils.WriteResource(ctx, res)
 }
 
 // AdminUpdateVariant updates an existing variant
@@ -189,13 +144,8 @@ func (c *Controller) AdminUpdateVariant(ctx *gin.Context) {
 		return
 	}
 
-	variant, err := c.service.UpdateVariant(ctx.Request.Context(), productID, variantID, req)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, http.StatusOK, "Variant updated successfully", variant)
+	res := c.service.UpdateVariant(ctx.Request.Context(), productID, variantID, req)
+	utils.WriteResource(ctx, res)
 }
 
 // AdminListVariantAddOns lists add-ons for a specific variant
@@ -214,17 +164,8 @@ func (c *Controller) AdminListVariantAddOns(ctx *gin.Context) {
 		return
 	}
 
-	addOns, err := c.service.ListVariantAddOns(ctx.Request.Context(), productID, variantID)
-	if errors.Is(err, sql.ErrNoRows) {
-		utils.ErrorResponse(ctx, http.StatusNotFound, "Product or variant not found", nil)
-		return
-	}
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, http.StatusOK, "Variant add-ons retrieved successfully", addOns)
+	res := c.service.ListVariantAddOns(ctx.Request.Context(), productID, variantID)
+	utils.WriteResource(ctx, res)
 }
 
 // AdminCreateVariantAddOn creates a new add-on mapping for a variant
@@ -249,17 +190,8 @@ func (c *Controller) AdminCreateVariantAddOn(ctx *gin.Context) {
 		return
 	}
 
-	addOn, err := c.service.CreateVariantAddOn(ctx.Request.Context(), productID, variantID, req.AddOnProductID)
-	if errors.Is(err, sql.ErrNoRows) {
-		utils.ErrorResponse(ctx, http.StatusNotFound, "Product, variant or add-on product not found", nil)
-		return
-	}
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, http.StatusCreated, "Variant add-on created successfully", addOn)
+	res := c.service.CreateVariantAddOn(ctx.Request.Context(), productID, variantID, req.AddOnProductID)
+	utils.WriteResource(ctx, res)
 }
 
 // AdminUpdateVariantAddOn updates an existing add-on mapping for a variant
@@ -291,17 +223,8 @@ func (c *Controller) AdminUpdateVariantAddOn(ctx *gin.Context) {
 		return
 	}
 
-	addOn, err := c.service.UpdateVariantAddOn(ctx.Request.Context(), productID, variantID, addOnID, req.AddOnProductID)
-	if errors.Is(err, sql.ErrNoRows) {
-		utils.ErrorResponse(ctx, http.StatusNotFound, "Product, variant or add-on not found", nil)
-		return
-	}
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, http.StatusOK, "Variant add-on updated successfully", addOn)
+	res := c.service.UpdateVariantAddOn(ctx.Request.Context(), productID, variantID, addOnID, req.AddOnProductID)
+	utils.WriteResource(ctx, res)
 }
 
 // AdminDeleteVariantAddOn deletes an add-on mapping from a variant
@@ -327,14 +250,6 @@ func (c *Controller) AdminDeleteVariantAddOn(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.service.DeleteVariantAddOn(ctx.Request.Context(), productID, variantID, addOnID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			utils.ErrorResponse(ctx, http.StatusNotFound, "Product, variant or add-on not found", nil)
-			return
-		}
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	ctx.Status(http.StatusNoContent)
+	res := c.service.DeleteVariantAddOn(ctx.Request.Context(), productID, variantID, addOnID)
+	utils.WriteResource(ctx, res)
 }

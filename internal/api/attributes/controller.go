@@ -1,9 +1,6 @@
 package attributes
 
 import (
-	"database/sql"
-	"errors"
-	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -29,13 +26,8 @@ func (c *Controller) CreateAttribute(ctx *gin.Context) {
 		return
 	}
 
-	attr, err := c.service.CreateAttribute(req)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, http.StatusCreated, "Attribute created successfully", attr)
+	res := c.service.CreateAttribute(req)
+	utils.WriteResource(ctx, res)
 }
 
 // UpdateAttribute handles PUT /api/admin/attributes/:id
@@ -53,41 +45,24 @@ func (c *Controller) UpdateAttribute(ctx *gin.Context) {
 		return
 	}
 
-	attr, err := c.service.UpdateAttribute(id, req)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, http.StatusOK, "Attribute updated successfully", attr)
+	res := c.service.UpdateAttribute(id, req)
+	utils.WriteResource(ctx, res)
 }
 
 // ListAttributes handles GET /api/admin/attributes
 func (c *Controller) ListAttributes(ctx *gin.Context) {
 	pagination := utils.ParsePaginationParams(ctx)
 
-	attrs, total, err := c.service.ListAttributes(pagination)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Failed to retrieve attributes", err.Error())
-		return
-	}
-
-	pagination.SetTotal(total)
-	utils.SuccessResponseWithMeta(ctx, http.StatusOK, "Attributes retrieved successfully", attrs, pagination.GetMeta())
+	res := c.service.ListAttributes(pagination)
+	utils.WriteResource(ctx, res)
 }
 
 // ListDeletedAttributes handles GET /api/admin/attributes/deleted
 func (c *Controller) ListDeletedAttributes(ctx *gin.Context) {
 	pagination := utils.ParsePaginationParams(ctx)
 
-	attrs, total, err := c.service.ListDeletedAttributes(pagination)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Failed to retrieve deleted attributes", err.Error())
-		return
-	}
-
-	pagination.SetTotal(total)
-	utils.SuccessResponseWithMeta(ctx, http.StatusOK, "Deleted attributes retrieved successfully", attrs, pagination.GetMeta())
+	res := c.service.ListDeletedAttributes(pagination)
+	utils.WriteResource(ctx, res)
 }
 
 // GetAttribute handles GET /api/admin/attributes/:id
@@ -99,13 +74,8 @@ func (c *Controller) GetAttribute(ctx *gin.Context) {
 		return
 	}
 
-	attr, err := c.service.GetAttributeByID(id)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusNotFound, "Attribute not found", nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, http.StatusOK, "Attribute retrieved successfully", attr)
+	res := c.service.GetAttributeByID(id)
+	utils.WriteResource(ctx, res)
 }
 
 // DeleteAttribute handles DELETE /api/admin/attributes/:id
@@ -117,12 +87,8 @@ func (c *Controller) DeleteAttribute(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.service.DeleteAttribute(id); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	ctx.Status(http.StatusNoContent)
+	res := c.service.DeleteAttribute(id)
+	utils.WriteResource(ctx, res)
 }
 
 // RecoverAttribute handles PUT /api/admin/attributes/:id/recover
@@ -134,17 +100,8 @@ func (c *Controller) RecoverAttribute(ctx *gin.Context) {
 		return
 	}
 
-	attr, err := c.service.RecoverAttribute(id)
-	if errors.Is(err, sql.ErrNoRows) {
-		utils.ErrorResponse(ctx, http.StatusNotFound, "Attribute not found", nil)
-		return
-	}
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, http.StatusOK, "Attribute recovered successfully", attr)
+	res := c.service.RecoverAttribute(id)
+	utils.WriteResource(ctx, res)
 }
 
 // ListAttributeValues handles GET /api/admin/attributes/:id/values
@@ -158,14 +115,8 @@ func (c *Controller) ListAttributeValues(ctx *gin.Context) {
 
 	pagination := utils.ParsePaginationParams(ctx)
 
-	values, total, err := c.service.ListAttributeValues(attributeID, pagination)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Failed to retrieve attribute values", err.Error())
-		return
-	}
-
-	pagination.SetTotal(total)
-	utils.SuccessResponseWithMeta(ctx, http.StatusOK, "Attribute values retrieved successfully", values, pagination.GetMeta())
+	res := c.service.ListAttributeValues(attributeID, pagination)
+	utils.WriteResource(ctx, res)
 }
 
 // ListDeletedAttributeValues handles GET /api/admin/attributes/:id/values/deleted
@@ -179,14 +130,8 @@ func (c *Controller) ListDeletedAttributeValues(ctx *gin.Context) {
 
 	pagination := utils.ParsePaginationParams(ctx)
 
-	values, total, err := c.service.ListDeletedAttributeValues(attributeID, pagination)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Failed to retrieve deleted attribute values", err.Error())
-		return
-	}
-
-	pagination.SetTotal(total)
-	utils.SuccessResponseWithMeta(ctx, http.StatusOK, "Deleted attribute values retrieved successfully", values, pagination.GetMeta())
+	res := c.service.ListDeletedAttributeValues(attributeID, pagination)
+	utils.WriteResource(ctx, res)
 }
 
 // CreateAttributeValue handles POST /api/admin/attributes/:id/values
@@ -204,13 +149,8 @@ func (c *Controller) CreateAttributeValue(ctx *gin.Context) {
 		return
 	}
 
-	value, err := c.service.CreateAttributeValue(attributeID, req)
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, http.StatusCreated, "Attribute value created successfully", value)
+	res := c.service.CreateAttributeValue(attributeID, req)
+	utils.WriteResource(ctx, res)
 }
 
 // UpdateAttributeValue handles PUT /api/admin/attributes/:id/values/:valueId
@@ -235,18 +175,8 @@ func (c *Controller) UpdateAttributeValue(ctx *gin.Context) {
 		return
 	}
 
-	value, err := c.service.UpdateAttributeValue(attributeID, valueID, req)
-	if errors.Is(err, sql.ErrNoRows) {
-		utils.ErrorResponse(ctx, 404, "some entities can not be found", nil)
-		return
-	}
-
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(ctx, http.StatusOK, "Attribute value updated successfully", value)
+	res := c.service.UpdateAttributeValue(attributeID, valueID, req)
+	utils.WriteResource(ctx, res)
 }
 
 // RecoverAttributeValue handles PUT /api/admin/attributes/:id/values/:valueId/recover
@@ -265,17 +195,14 @@ func (c *Controller) RecoverAttributeValue(ctx *gin.Context) {
 		return
 	}
 
-	value, err := c.service.RecoverAttributeValue(attributeID, valueID)
-	if errors.Is(err, sql.ErrNoRows) {
-		utils.ErrorResponse(ctx, http.StatusNotFound, "some entities can not be found", nil)
-		return
-	}
-	if err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
+	var req requests.AttributeValueRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ValidationErrorResponse(ctx, err.Error())
 		return
 	}
 
-	utils.SuccessResponse(ctx, http.StatusOK, "Attribute value recovered successfully", value)
+	res := c.service.RecoverAttributeValue(attributeID, valueID)
+	utils.WriteResource(ctx, res)
 }
 
 // DeleteAttributeValue handles DELETE /api/admin/attributes/:id/values/:valueId
@@ -294,10 +221,6 @@ func (c *Controller) DeleteAttributeValue(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.service.DeleteAttributeValue(attributeID, valueID); err != nil {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, err.Error(), nil)
-		return
-	}
-
-	ctx.Status(http.StatusNoContent)
+	res := c.service.DeleteAttributeValue(attributeID, valueID)
+	utils.WriteResource(ctx, res)
 }

@@ -3,7 +3,7 @@ package products
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"errors"
 
 	"github.com/onas/ecommerce-api/internal/api/products/requests"
 	"github.com/onas/ecommerce-api/internal/utils"
@@ -69,21 +69,21 @@ type AdminProductDetail struct {
 }
 
 type Service interface {
-	CreateProduct(ctx context.Context, req requests.AdminProductRequest) (*AdminProductDetail, error)
-	UpdateProduct(ctx context.Context, id int64, req requests.AdminProductRequest) (*AdminProductDetail, error)
-	DeleteProduct(ctx context.Context, id int64) error
-	ListProducts(ctx context.Context, pagination *utils.Pagination) ([]AdminProductListItem, int64, error)
-	GetProductByID(ctx context.Context, id int64) (*AdminProductDetail, error)
-	CreateVariant(ctx context.Context, productID int64, req requests.AdminVariantRequest) (*AdminVariant, error)
-	UpdateVariant(ctx context.Context, productID, variantID int64, req requests.AdminVariantRequest) (*AdminVariant, error)
-	ListVariantAddOns(ctx context.Context, productID, variantID int64) ([]AdminVariantAddOn, error)
-	CreateVariantAddOn(ctx context.Context, productID, variantID, addOnProductID int64) (*AdminVariantAddOn, error)
-	UpdateVariantAddOn(ctx context.Context, productID, variantID, addOnID, addOnProductID int64) (*AdminVariantAddOn, error)
-	DeleteVariantAddOn(ctx context.Context, productID, variantID, addOnID int64) error
+	CreateProduct(ctx context.Context, req requests.AdminProductRequest) utils.IResource
+	UpdateProduct(ctx context.Context, id int64, req requests.AdminProductRequest) utils.IResource
+	DeleteProduct(ctx context.Context, id int64) utils.IResource
+	ListProducts(ctx context.Context, pagination *utils.Pagination) utils.IResource
+	GetProductByID(ctx context.Context, id int64) utils.IResource
+	CreateVariant(ctx context.Context, productID int64, req requests.AdminVariantRequest) utils.IResource
+	UpdateVariant(ctx context.Context, productID, variantID int64, req requests.AdminVariantRequest) utils.IResource
+	ListVariantAddOns(ctx context.Context, productID, variantID int64) utils.IResource
+	CreateVariantAddOn(ctx context.Context, productID, variantID, addOnProductID int64) utils.IResource
+	UpdateVariantAddOn(ctx context.Context, productID, variantID, addOnID, addOnProductID int64) utils.IResource
+	DeleteVariantAddOn(ctx context.Context, productID, variantID, addOnID int64) utils.IResource
 
 	// Public APIs
-	PublicListProducts(ctx context.Context, pagination *utils.Pagination, q string) ([]AdminProductListItem, int64, error)
-	PublicGetProduct(ctx context.Context, id int64) (*AdminProductDetail, error)
+	PublicListProducts(ctx context.Context, pagination *utils.Pagination, q string) utils.IResource
+	PublicGetProduct(ctx context.Context, id int64) utils.IResource
 }
 
 type service struct {
@@ -98,111 +98,138 @@ func NewService(db *sql.DB, repo Repository) Service {
 	}
 }
 
-func (s *service) CreateProduct(ctx context.Context, req requests.AdminProductRequest) (*AdminProductDetail, error) {
+func (s *service) CreateProduct(ctx context.Context, req requests.AdminProductRequest) utils.IResource {
 	if req.Name == "" {
-		return nil, fmt.Errorf("name is required")
+		return utils.NewBadRequestResource("name is required", nil)
 	}
 	if req.Price < 0 {
-		return nil, fmt.Errorf("price must be greater than or equal to zero")
+		return utils.NewBadRequestResource("price must be greater than or equal to zero", nil)
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	productID, err := s.repo.CreateProduct(ctx, tx, req)
 	if err != nil {
 		tx.Rollback()
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	if len(req.Attributes) > 0 {
 		if err := s.repo.ReplaceProductAttributes(ctx, tx, productID, req.Attributes); err != nil {
 			tx.Rollback()
-			return nil, err
+			return utils.NewBadRequestResource(err.Error(), nil)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
-	return s.repo.GetAdminProductByID(ctx, productID)
+	detail, err := s.repo.GetAdminProductByID(ctx, productID)
+	if err != nil {
+		return utils.NewBadRequestResource(err.Error(), nil)
+	}
+
+	return utils.NewCreatedResource("Product created successfully", detail)
 }
 
-func (s *service) UpdateProduct(ctx context.Context, id int64, req requests.AdminProductRequest) (*AdminProductDetail, error) {
+func (s *service) UpdateProduct(ctx context.Context, id int64, req requests.AdminProductRequest) utils.IResource {
 	if req.Name == "" {
-		return nil, fmt.Errorf("name is required")
+		return utils.NewBadRequestResource("name is required", nil)
 	}
 	if req.Price < 0 {
-		return nil, fmt.Errorf("price must be greater than or equal to zero")
+		return utils.NewBadRequestResource("price must be greater than or equal to zero", nil)
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	if err := s.repo.UpdateProduct(ctx, tx, id, req); err != nil {
 		tx.Rollback()
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	if req.Attributes != nil {
 		if err := s.repo.ReplaceProductAttributes(ctx, tx, id, req.Attributes); err != nil {
 			tx.Rollback()
-			return nil, err
+			return utils.NewBadRequestResource(err.Error(), nil)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
-	return s.repo.GetAdminProductByID(ctx, id)
+	detail, err := s.repo.GetAdminProductByID(ctx, id)
+	if err != nil {
+		return utils.NewBadRequestResource(err.Error(), nil)
+	}
+
+	return utils.NewOKResource("Product updated successfully", detail)
 }
 
-func (s *service) DeleteProduct(ctx context.Context, id int64) error {
+func (s *service) DeleteProduct(ctx context.Context, id int64) utils.IResource {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	if err := s.repo.SoftDeleteProduct(ctx, tx, id); err != nil {
 		tx.Rollback()
-		return err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
-	return nil
+	return utils.NewNoContentResource()
 }
 
-func (s *service) ListProducts(ctx context.Context, pagination *utils.Pagination) ([]AdminProductListItem, int64, error) {
-	return s.repo.ListAdminProducts(ctx, pagination)
+func (s *service) ListProducts(ctx context.Context, pagination *utils.Pagination) utils.IResource {
+	products, total, err := s.repo.ListAdminProducts(ctx, pagination)
+	if err != nil {
+		return utils.NewInternalErrorResource("Failed to retrieve products", err.Error())
+	}
+
+	pagination.SetTotal(total)
+	return utils.NewPaginatedOKResource("Products retrieved successfully", products, pagination.GetMeta())
 }
 
-func (s *service) GetProductByID(ctx context.Context, id int64) (*AdminProductDetail, error) {
-	return s.repo.GetAdminProductByID(ctx, id)
+func (s *service) GetProductByID(ctx context.Context, id int64) utils.IResource {
+	product, err := s.repo.GetAdminProductByID(ctx, id)
+	if err != nil {
+		return utils.NewNotFoundResource("Product not found", nil)
+	}
+
+	return utils.NewOKResource("Product retrieved successfully", product)
 }
 
 // PublicListProducts lists only active, non-deleted products for public APIs.
-func (s *service) PublicListProducts(ctx context.Context, pagination *utils.Pagination, q string) ([]AdminProductListItem, int64, error) {
+func (s *service) PublicListProducts(ctx context.Context, pagination *utils.Pagination, q string) utils.IResource {
 	// For now, reuse admin listing and filter via WHERE is_active = TRUE in the repository.
-	return s.repo.ListPublicProducts(ctx, pagination, q)
+	products, total, err := s.repo.ListPublicProducts(ctx, pagination, q)
+	if err != nil {
+		return utils.NewInternalErrorResource("Failed to retrieve products", err.Error())
+	}
+
+	pagination.SetTotal(total)
+	return utils.NewPaginatedOKResource("Products retrieved successfully", products, pagination.GetMeta())
 }
 
 // PublicGetProduct returns a product and its active variants for public APIs.
-func (s *service) PublicGetProduct(ctx context.Context, id int64) (*AdminProductDetail, error) {
+func (s *service) PublicGetProduct(ctx context.Context, id int64) utils.IResource {
 	product, err := s.repo.GetAdminProductByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return utils.NewNotFoundResource("Product not found", nil)
 	}
 	if !product.IsActive {
-		return nil, sql.ErrNoRows
+		return utils.NewNotFoundResource("Product not found", nil)
 	}
 
 	// Filter out inactive variants for public response
@@ -213,141 +240,168 @@ func (s *service) PublicGetProduct(ctx context.Context, id int64) (*AdminProduct
 		}
 	}
 	product.Variants = activeVariants
-	return product, nil
+	return utils.NewOKResource("Product retrieved successfully", product)
 }
 
-func (s *service) CreateVariant(ctx context.Context, productID int64, req requests.AdminVariantRequest) (*AdminVariant, error) {
+func (s *service) CreateVariant(ctx context.Context, productID int64, req requests.AdminVariantRequest) utils.IResource {
 	if req.SKU == "" {
-		return nil, fmt.Errorf("sku is required")
+		return utils.NewBadRequestResource("sku is required", nil)
 	}
 	if len(req.AttributeValueIDs) == 0 {
-		return nil, fmt.Errorf("attribute_value_ids is required")
+		return utils.NewBadRequestResource("attribute_value_ids is required", nil)
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	variantID, err := s.repo.CreateVariant(ctx, tx, productID, req)
 	if err != nil {
 		tx.Rollback()
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
-	return s.repo.GetAdminVariantByID(ctx, productID, variantID)
+	variant, err := s.repo.GetAdminVariantByID(ctx, productID, variantID)
+	if err != nil {
+		return utils.NewBadRequestResource(err.Error(), nil)
+	}
+
+	return utils.NewCreatedResource("Variant created successfully", variant)
 }
 
-func (s *service) ListVariantAddOns(ctx context.Context, productID, variantID int64) ([]AdminVariantAddOn, error) {
-	return s.repo.ListVariantAddOns(ctx, productID, variantID)
+func (s *service) ListVariantAddOns(ctx context.Context, productID, variantID int64) utils.IResource {
+	addOns, err := s.repo.ListVariantAddOns(ctx, productID, variantID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return utils.NewNotFoundResource("Product or variant not found", nil)
+		}
+		return utils.NewBadRequestResource(err.Error(), nil)
+	}
+
+	return utils.NewOKResource("Variant add-ons retrieved successfully", addOns)
 }
 
-func (s *service) CreateVariantAddOn(ctx context.Context, productID, variantID, addOnProductID int64) (*AdminVariantAddOn, error) {
+func (s *service) CreateVariantAddOn(ctx context.Context, productID, variantID, addOnProductID int64) utils.IResource {
 	if addOnProductID <= 0 {
-		return nil, fmt.Errorf("add_on_product_id is required")
+		return utils.NewBadRequestResource("add_on_product_id is required", nil)
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	addOnID, err := s.repo.CreateVariantAddOn(ctx, tx, productID, variantID, addOnProductID)
 	if err != nil {
 		tx.Rollback()
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	addOns, err := s.repo.ListVariantAddOns(ctx, productID, variantID)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, sql.ErrNoRows) {
+			return utils.NewNotFoundResource("Product, variant or add-on product not found", nil)
+		}
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 	for _, ao := range addOns {
 		if ao.ID == addOnID {
-			return &ao, nil
+			return utils.NewCreatedResource("Variant add-on created successfully", &ao)
 		}
 	}
-	return nil, sql.ErrNoRows
+	return utils.NewNotFoundResource("Product, variant or add-on product not found", nil)
 }
 
-func (s *service) UpdateVariantAddOn(ctx context.Context, productID, variantID, addOnID, addOnProductID int64) (*AdminVariantAddOn, error) {
+func (s *service) UpdateVariantAddOn(ctx context.Context, productID, variantID, addOnID, addOnProductID int64) utils.IResource {
 	if addOnProductID <= 0 {
-		return nil, fmt.Errorf("add_on_product_id is required")
+		return utils.NewBadRequestResource("add_on_product_id is required", nil)
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	if err := s.repo.UpdateVariantAddOn(ctx, tx, productID, variantID, addOnID, addOnProductID); err != nil {
 		tx.Rollback()
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	addOns, err := s.repo.ListVariantAddOns(ctx, productID, variantID)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, sql.ErrNoRows) {
+			return utils.NewNotFoundResource("Product, variant or add-on not found", nil)
+		}
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 	for _, ao := range addOns {
 		if ao.ID == addOnID {
-			return &ao, nil
+			return utils.NewOKResource("Variant add-on updated successfully", &ao)
 		}
 	}
-	return nil, sql.ErrNoRows
+	return utils.NewNotFoundResource("Product, variant or add-on not found", nil)
 }
 
-func (s *service) DeleteVariantAddOn(ctx context.Context, productID, variantID, addOnID int64) error {
+func (s *service) DeleteVariantAddOn(ctx context.Context, productID, variantID, addOnID int64) utils.IResource {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	if err := s.repo.DeleteVariantAddOn(ctx, tx, productID, variantID, addOnID); err != nil {
 		tx.Rollback()
-		return err
+		if errors.Is(err, sql.ErrNoRows) {
+			return utils.NewNotFoundResource("Product, variant or add-on not found", nil)
+		}
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
-	return nil
+	return utils.NewNoContentResource()
 }
 
-func (s *service) UpdateVariant(ctx context.Context, productID, variantID int64, req requests.AdminVariantRequest) (*AdminVariant, error) {
+func (s *service) UpdateVariant(ctx context.Context, productID, variantID int64, req requests.AdminVariantRequest) utils.IResource {
 	if req.SKU == "" {
-		return nil, fmt.Errorf("sku is required")
+		return utils.NewBadRequestResource("sku is required", nil)
 	}
 	if len(req.AttributeValueIDs) == 0 {
-		return nil, fmt.Errorf("attribute_value_ids is required")
+		return utils.NewBadRequestResource("attribute_value_ids is required", nil)
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	if err := s.repo.UpdateVariant(ctx, tx, productID, variantID, req); err != nil {
 		tx.Rollback()
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
-	return s.repo.GetAdminVariantByID(ctx, productID, variantID)
+	variant, err := s.repo.GetAdminVariantByID(ctx, productID, variantID)
+	if err != nil {
+		return utils.NewBadRequestResource(err.Error(), nil)
+	}
+
+	return utils.NewOKResource("Variant updated successfully", variant)
 }
