@@ -81,7 +81,7 @@ func (r *Repository) SoftDeleteAttribute(id int64) error {
 func (r *Repository) RestoreAttribute(id int64) error {
 	// Restore attribute
 	err := r.db.Exec(
-		"UPDATE attributes SET deleted_at = NULL, is_active = TRUE, updated_at = NOW() WHERE id = $1 AND deleted_at IS NOT NULL",
+		"UPDATE attributes SET deleted_at = NULL, updated_at = NOW() WHERE id = $1 AND deleted_at IS NOT NULL",
 		id,
 	).Error
 	if err != nil {
