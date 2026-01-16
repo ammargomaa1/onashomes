@@ -160,9 +160,9 @@ func (r *Repository) ListDeletedAttributes(pagination *utils.Pagination) ([]Attr
 	return list, total, err
 }
 
-func (r *Repository) GetAttributeByID(db *gorm.DB, id int64) (*requests.AttributeListItem, error) {
+func (r *Repository) GetAttributeByID(db *gorm.DB, id int64) (*models.Attribute, error) {
 
-	var d requests.AttributeListItem
+	var d models.Attribute
 	if err := db.Raw(
 		"SELECT id, name_en, name_ar FROM attributes WHERE id = $1 AND deleted_at IS NULL",
 		id,

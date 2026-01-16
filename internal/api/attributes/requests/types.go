@@ -16,7 +16,8 @@ type AttributeValueRequest struct {
 type AttributeValuesResponse struct {
 	ID          int64  `json:"id"`
 	AttributeID int64  `json:"attribute_id"`
-	Value       string `json:"value"`
+	ValueAr       string `json:"value_ar"`
+	ValueEn       string `json:"value_en"`
 	SortOrder   int    `json:"sort_order"`
 	IsActive    bool   `json:"is_active"`
 }
@@ -24,9 +25,9 @@ type AttributeValuesResponse struct {
 // AttributeDetail represents an attribute with its values.
 type AttributeResponse struct {
 	ID       int64                     `json:"id"`
-	Name     string                    `json:"name"`
-	IsActive bool                      `json:"is_active"`
-	Values   []AttributeValuesResponse `json:"values"`
+	NameAr     string                    `json:"name_ar"`
+	NameEn   string                    `json:"name_en"`
+	Values   []AttributeValuesResponse `json:"attribute_values"`
 }
 
 type AttributeListItem struct {

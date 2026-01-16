@@ -52,11 +52,6 @@ func (s *Service) CreateAttribute(req requests.AttributeRequest) utils.IResource
 		return utils.NewBadRequestResource("name has to be unique", nil)
 	}
 
-	detailIem, err := s.repo.GetAttributeByID(tx, id)
-	if err != nil {
-		tx.Rollback()
-		return utils.NewInternalErrorResource("Failed to retrieve attribute", err.Error())
-	}
 
 	_, err = s.repo.CreateAttributeValuesBulk(tx, id, req.AttributeValues)
 	if err != nil {
@@ -64,23 +59,12 @@ func (s *Service) CreateAttribute(req requests.AttributeRequest) utils.IResource
 		return utils.NewInternalErrorResource("Failed to create attribute values", err.Error())
 	}
 
-	attributeValues, err := s.repo.GetAttributeValuesResponse(id)
-	if err != nil {
-		tx.Rollback()
-		return utils.NewInternalErrorResource("Failed to retrieve attribute values", err.Error())
-	}
-
 
 	if err := tx.Commit().Error; err != nil {
 		return utils.NewInternalErrorResource("Failed to proceed", err.Error())
 	}
 
-	return utils.NewCreatedResource("Attribute created successfully", requests.AttributeResponse{
-		ID:       detailIem.ID,
-		Name:     detailIem.Name,
-		IsActive: detailIem.IsActive,
-		Values:   attributeValues,
-	})
+	return utils.NewCreatedResource("Attribute created successfully", nil)
 }
 
 func (s *Service) UpdateAttribute(id int64, req requests.AttributeRequest) utils.IResource {
@@ -121,7 +105,20 @@ func (s *Service) GetAttributeByID(id int64) utils.IResource {
 		return utils.NewNotFoundResource("Attribute not found", nil)
 	}
 
-	return utils.NewOKResource("Attribute retrieved successfully", detail)
+	detailsAttributesValues, err := s.repo.GetAttributeValuesResponse(id)
+
+	if err != nil {
+		return utils.NewInternalErrorResource("Failed to retrieve attribute values", err.Error())
+	}
+
+	AttributeResponse := &requests.AttributeResponse{
+		ID:     detail.ID,
+		NameAr:   detail.NameAr,
+		NameEn: detail.NameEn,
+		Values: detailsAttributesValues,
+	}
+
+	return utils.NewOKResource("Attribute retrieved successfully", AttributeResponse)
 }
 
 func (s *Service) ListDeletedAttributes(pagination *utils.Pagination) utils.IResource {
