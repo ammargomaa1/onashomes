@@ -2,6 +2,7 @@ package attributes
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/onas/ecommerce-api/internal/api/attributes/requests"
 	"github.com/onas/ecommerce-api/internal/models"
@@ -27,8 +28,8 @@ func (r *Repository) CreateAttribute(db *gorm.DB, req requests.AttributeRequest)
 	var id int64
 
 	err := db.Raw(
-		"INSERT INTO attributes (name) VALUES ($1) RETURNING id",
-		req.Name,
+		"INSERT INTO attributes (name_ar, name_en) VALUES ($1, $2) RETURNING id",
+		req.NameAr, req.NameEn,
 	).Scan(&id).Error
 
 
@@ -38,8 +39,8 @@ func (r *Repository) CreateAttribute(db *gorm.DB, req requests.AttributeRequest)
 func (r *Repository) UpdateAttribute(id int64, req requests.AttributeRequest) error {
 
 	err := r.db.Exec(
-		"UPDATE attributes SET name = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL",
-		req.Name, id,
+		"UPDATE attributes SET name_ar = $1, name_en = $2, updated_at = $3 WHERE id = $4 AND deleted_at IS NULL",
+		req.NameAr, req.NameEn, time.Now(), id,
 	).Error
 
 	return err
@@ -99,13 +100,22 @@ func (r *Repository) RestoreAttribute(id int64) error {
 
 func (r *Repository) ListAttributes(pagination *utils.Pagination) ([]AttributeListItem, int64, error) {
 	
-	var list []AttributeListItem
+	var list []models.Attribute
 	err := pagination.Paginate(r.db, models.Attribute{}).Scan(&list).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return list, pagination.Total, nil
+	var listItems []AttributeListItem
+	for _, attr := range list {
+		listItems = append(listItems, AttributeListItem{
+			ID:       attr.ID,
+			Name:     utils.GetLocalizedStringFromContext(attr.NameAr, attr.NameEn),
+			CreatedAt: attr.CreatedAt,
+		})
+	}
+
+	return listItems, pagination.Total, nil
 }
 
 // ListDeletedAttributeValues returns soft-deleted values for a given attribute.
@@ -154,7 +164,7 @@ func (r *Repository) GetAttributeByID(db *gorm.DB, id int64) (*requests.Attribut
 
 	var d requests.AttributeListItem
 	if err := db.Raw(
-		"SELECT id, name FROM attributes WHERE id = $1 AND deleted_at IS NULL",
+		"SELECT id, name_en, name_ar FROM attributes WHERE id = $1 AND deleted_at IS NULL",
 		id,
 	).Scan(&d).Error; err != nil {
 		return nil, err
@@ -197,8 +207,8 @@ func (r *Repository) CreateAttributeValue(attributeID int64, req requests.Attrib
 
 	var id int64
 	err := r.db.Raw(
-		"INSERT INTO attribute_values (attribute_id, value, sort_order, is_active) VALUES ($1, $2, $3, $4) RETURNING id",
-		attributeID, req.Value, req.SortOrder, req.IsActive,
+		"INSERT INTO attribute_values (attribute_id, value_ar, value_en, sort_order, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+		attributeID, req.ValueAr, req.ValueEn, req.SortOrder, req.IsActive,
 	).Scan(&id).Error
 
 	return id, err
@@ -242,17 +252,20 @@ func (r *Repository) CreateAttributeValuesBulk(
 	err = db.Raw(`
 		INSERT INTO attribute_values (
 			attribute_id,
-			value,
+			value_ar,
+			value_en,
 			sort_order,
 			is_active
 		)
 		SELECT
 			$1 AS attribute_id,
-			v.value,
+			v.value_ar,
+			v.value_en,
 			v.sort_order,
 			v.is_active
 		FROM jsonb_to_recordset($2::jsonb) AS v(
-			value TEXT,
+			value_ar TEXT,
+			value_en TEXT,
 			sort_order INT,
 			is_active BOOLEAN
 		)
@@ -271,13 +284,14 @@ func (r *Repository) GetAttributeValuesResponse(
 	err := r.db.Raw(`
 		SELECT
 			id,
-			value,
+			value_ar,
+			value_en,
 			sort_order,
 			is_active
 		FROM attribute_values
 		WHERE attribute_id = $1
 		  AND deleted_at IS NULL
-		ORDER BY sort_order, value
+		ORDER BY sort_order
 	`, attributeID).Scan(&values).Error
 
 	return values, err
@@ -286,8 +300,8 @@ func (r *Repository) GetAttributeValuesResponse(
 
 func (r *Repository) UpdateAttributeValue(attributeID, valueID int64, req requests.AttributeValueRequest) error {
 	err := r.db.Raw(
-		"UPDATE attribute_values SET value = $1, sort_order = $2, is_active = $3, updated_at = NOW() WHERE id = $4 AND attribute_id = $5 AND deleted_at IS NULL",
-		req.Value, req.SortOrder, req.IsActive, valueID, attributeID,
+		"UPDATE attribute_values SET value_ar = $1, value_en = $2, sort_order = $3, is_active = $4, updated_at = $5 WHERE id = $6 AND attribute_id = $7 AND deleted_at IS NULL",
+		req.ValueAr, req.ValueEn, req.SortOrder, req.IsActive, time.Now(), valueID, attributeID,
 	).Error
 
 

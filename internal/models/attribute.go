@@ -8,7 +8,8 @@ import (
 
 type Attribute struct {
 	ID        int64          `gorm:"primaryKey"`
-	Name      string         `gorm:"type:varchar(255);not null"`
+	NameAr    string         `gorm:"type:varchar(255);not null"`
+	NameEn    string         `gorm:"type:varchar(255);not null"`
 	CreatedAt time.Time      `gorm:"autoCreateTime"`
 	UpdatedAt time.Time      `gorm:"autoUpdateTime"`
 	DeletedAt gorm.DeletedAt `gorm:"index"`

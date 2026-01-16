@@ -23,8 +23,6 @@ func RegisterRoutes(router *gin.RouterGroup, controller *Controller) {
 		// Attribute values
 		adminRoutes.GET("/:id/values", middleware.RequirePermission("attributes.view"), controller.ListAttributeValues)
 		adminRoutes.GET("/:id/values/deleted", middleware.RequirePermission("attributes.view"), controller.ListDeletedAttributeValues)
-		adminRoutes.POST("/:id/values", middleware.RequirePermission("attributes.update"), controller.CreateAttributeValue)
-		adminRoutes.PUT("/:id/values/:valueId", middleware.RequirePermission("attributes.update"), controller.UpdateAttributeValue)
 		adminRoutes.PUT("/:id/values/:valueId/recover", middleware.RequirePermission("attributes.update"), controller.RecoverAttributeValue)
 		adminRoutes.DELETE("/:id/values/:valueId", middleware.RequirePermission("attributes.update"), controller.DeleteAttributeValue)
 	}

@@ -134,50 +134,7 @@ func (c *Controller) ListDeletedAttributeValues(ctx *gin.Context) {
 	utils.WriteResource(ctx, res)
 }
 
-// CreateAttributeValue handles POST /api/admin/attributes/:id/values
-func (c *Controller) CreateAttributeValue(ctx *gin.Context) {
-	idParam := ctx.Param("id")
-	attributeID, err := strconv.ParseInt(idParam, 10, 64)
-	if err != nil {
-		utils.ValidationErrorResponse(ctx, "invalid attribute id")
-		return
-	}
 
-	var req requests.AttributeValueRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ValidationErrorResponse(ctx, err.Error())
-		return
-	}
-
-	res := c.service.CreateAttributeValue(attributeID, req)
-	utils.WriteResource(ctx, res)
-}
-
-// UpdateAttributeValue handles PUT /api/admin/attributes/:id/values/:valueId
-func (c *Controller) UpdateAttributeValue(ctx *gin.Context) {
-	idParam := ctx.Param("id")
-	attributeID, err := strconv.ParseInt(idParam, 10, 64)
-	if err != nil {
-		utils.ValidationErrorResponse(ctx, "invalid attribute id")
-		return
-	}
-
-	valueParam := ctx.Param("valueId")
-	valueID, err := strconv.ParseInt(valueParam, 10, 64)
-	if err != nil {
-		utils.ValidationErrorResponse(ctx, "invalid value id")
-		return
-	}
-
-	var req requests.AttributeValueRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ValidationErrorResponse(ctx, err.Error())
-		return
-	}
-
-	res := c.service.UpdateAttributeValue(attributeID, valueID, req)
-	utils.WriteResource(ctx, res)
-}
 
 // RecoverAttributeValue handles PUT /api/admin/attributes/:id/values/:valueId/recover
 func (c *Controller) RecoverAttributeValue(ctx *gin.Context) {

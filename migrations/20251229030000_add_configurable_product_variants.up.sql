@@ -20,13 +20,15 @@ CREATE INDEX idx_products_deleted_at ON products (deleted_at);
 -- Global attributes
 CREATE TABLE attributes (
     id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
+    name_ar VARCHAR(100) NOT NULL,
+    name_en VARCHAR(100) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMPTZ
 );
 
-CREATE UNIQUE INDEX ux_attributes_name ON attributes (name);
+CREATE UNIQUE INDEX ux_attributes_name ON attributes (name_ar);
+CREATE UNIQUE INDEX ux_attributes_name ON attributes (name_en);
 CREATE INDEX idx_attributes_is_active ON attributes (is_active) WHERE deleted_at IS NULL;
 CREATE INDEX idx_attributes_deleted_at ON attributes (deleted_at);
 
@@ -34,7 +36,8 @@ CREATE INDEX idx_attributes_deleted_at ON attributes (deleted_at);
 CREATE TABLE attribute_values (
     id BIGSERIAL PRIMARY KEY,
     attribute_id BIGINT NOT NULL,
-    value VARCHAR(100) NOT NULL,
+    value_ar VARCHAR(100) NOT NULL,
+    value_en VARCHAR(100) NOT NULL,
     sort_order INT NOT NULL DEFAULT 0,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -48,7 +51,9 @@ CREATE TABLE attribute_values (
 );
 
 CREATE UNIQUE INDEX ux_attribute_values_attribute_id_value
-    ON attribute_values(attribute_id, value);
+    ON attribute_values(attribute_id, value_ar);
+    CREATE UNIQUE INDEX ux_attribute_values_attribute_id_value
+    ON attribute_values(attribute_id, value_en);
 CREATE INDEX idx_attribute_values_attribute_id
     ON attribute_values(attribute_id);
 CREATE INDEX idx_attribute_values_is_active

@@ -1,0 +1,18 @@
+{
+  "PROCUREMENT": {
+    "SUPPLIERS": {
+      "NAME": "Supplier Name",
+      "EMAIL": "Supplier Email",
+      "PHONE": "Supplier Phone"
+    },
+    "ORDERS": {
+      "ID": "Order ID",
+      "STATUS": "Order Status"
+    }
+  },
+  "COMMON": {
+    "SUCCESS": "Operation completed successfully",
+    "ERROR": "An error occurred",
+    "NOT_FOUND": "Resource not found"
+  }
+}

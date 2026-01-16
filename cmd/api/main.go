@@ -69,6 +69,7 @@ func main() {
 
 	// Apply global middleware
 	router.Use(middleware.CORSMiddleware())
+	router.Use(middleware.ContextMiddleware())
 
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {

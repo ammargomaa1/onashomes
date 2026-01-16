@@ -43,9 +43,6 @@ func NewService(repo Repository) *Service {
 }
 
 func (s *Service) CreateAttribute(req requests.AttributeRequest) utils.IResource {
-	if req.Name == "" {
-		return utils.NewBadRequestResource("name is required", nil)
-	}
 
 	tx := s.repo.db.Begin()
 
@@ -87,9 +84,6 @@ func (s *Service) CreateAttribute(req requests.AttributeRequest) utils.IResource
 }
 
 func (s *Service) UpdateAttribute(id int64, req requests.AttributeRequest) utils.IResource {
-	if req.Name == "" {
-		return utils.NewBadRequestResource("name is required", nil)
-	}
 
 	if err := s.repo.UpdateAttribute(id, req); err != nil {
 		return utils.NewBadRequestResource(err.Error(), nil)
@@ -163,49 +157,6 @@ func (s *Service) ListAttributeValues(attributeID int64, pagination *utils.Pagin
 	return utils.NewPaginatedOKResource("Attribute values retrieved successfully", items, pagination.GetMeta())
 }
 
-func (s *Service) CreateAttributeValue(attributeID int64, req requests.AttributeValueRequest) utils.IResource {
-	if req.Value == "" {
-		return utils.NewBadRequestResource("value is required", nil)
-	}
-
-	id, err := s.repo.CreateAttributeValue(attributeID, req)
-	if err != nil {
-		return utils.NewBadRequestResource(err.Error(), nil)
-	}
-
-	value := &AttributeValue{
-		ID:          id,
-		AttributeID: attributeID,
-		Value:       req.Value,
-		SortOrder:   req.SortOrder,
-		IsActive:    req.IsActive,
-	}
-
-	return utils.NewCreatedResource("Attribute value created successfully", value)
-}
-
-func (s *Service) UpdateAttributeValue(attributeID, valueID int64, req requests.AttributeValueRequest) utils.IResource {
-	if req.Value == "" {
-		return utils.NewBadRequestResource("value is required", nil)
-	}
-
-	if err := s.repo.UpdateAttributeValue(attributeID, valueID, req); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return utils.NewNotFoundResource("some entities can not be found", nil)
-		}
-		return utils.NewBadRequestResource(err.Error(), nil)
-	}
-
-	value := &AttributeValue{
-		ID:          valueID,
-		AttributeID: attributeID,
-		Value:       req.Value,
-		SortOrder:   req.SortOrder,
-		IsActive:    req.IsActive,
-	}
-
-	return utils.NewOKResource("Attribute value updated successfully", value)
-}
 
 func (s *Service) DeleteAttributeValue(attributeID, valueID int64) utils.IResource {
 	if err := s.repo.SoftDeleteAttributeValue(attributeID, valueID); err != nil {
