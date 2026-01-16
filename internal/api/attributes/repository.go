@@ -36,9 +36,9 @@ func (r *Repository) CreateAttribute(db *gorm.DB, req requests.AttributeRequest)
 	return id, err
 }
 
-func (r *Repository) UpdateAttribute(id int64, req requests.AttributeRequest) error {
+func (r *Repository) UpdateAttribute(db *gorm.DB, id int64, req requests.AttributeRequest) error {
 
-	err := r.db.Exec(
+	err := db.Exec(
 		"UPDATE attributes SET name_ar = $1, name_en = $2, updated_at = $3 WHERE id = $4 AND deleted_at IS NULL",
 		req.NameAr, req.NameEn, time.Now(), id,
 	).Error
@@ -144,20 +144,22 @@ func (r *Repository) ListDeletedAttributeValues(attributeID int64, pagination *u
 // ListDeletedAttributes returns attributes that have been soft-deleted.
 func (r *Repository) ListDeletedAttributes(pagination *utils.Pagination) ([]AttributeListItem, int64, error) {
 
-	var total int64
-	if err := r.db.Raw(
-		"SELECT COUNT(*) FROM attributes WHERE deleted_at IS NOT NULL",
-	).Scan(&total).Error; err != nil {
+	var list []models.Attribute		
+	err := pagination.Paginate(r.db.Unscoped().Where("deleted_at IS NOT NULL"), models.Attribute{}).Scan(&list).Error
+	if err != nil {
 		return nil, 0, err
 	}
-	offset := (pagination.Page - 1) * pagination.Limit
-	var list []AttributeListItem
-	err := r.db.Raw(
-		"SELECT id, name, is_active FROM attributes WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC LIMIT $1 OFFSET $2",
-		pagination.Limit, offset,
-	).Scan(&list).Error
 
-	return list, total, err
+	var listItems []AttributeListItem
+	for _, attr := range list {
+		listItems = append(listItems, AttributeListItem{
+			ID:       attr.ID,	
+			Name:     utils.GetLocalizedStringFromContext(attr.NameAr, attr.NameEn),
+			CreatedAt: attr.CreatedAt,
+		})
+	}
+
+	return listItems, pagination.Total, nil
 }
 
 func (r *Repository) GetAttributeByID(db *gorm.DB, id int64) (*models.Attribute, error) {
@@ -312,6 +314,14 @@ func (r *Repository) SoftDeleteAttributeValue(attributeID, valueID int64) error 
 	err := r.db.Raw(
 		"UPDATE attribute_values SET deleted_at = NOW(), is_active = FALSE WHERE id = $1 AND attribute_id = $2 AND deleted_at IS NULL",
 		valueID, attributeID,
+	).Error
+
+	return err
+}
+
+func (r *Repository) DeleteAttributeValue(db *gorm.DB, attributeID int64) error {
+	err := db.Exec(
+		"DELETE FROM attribute_values WHERE attribute_id = $1 ", attributeID,
 	).Error
 
 	return err

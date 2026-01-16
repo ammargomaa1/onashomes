@@ -56,12 +56,12 @@ func (s *Service) CreateAttribute(req requests.AttributeRequest) utils.IResource
 	_, err = s.repo.CreateAttributeValuesBulk(tx, id, req.AttributeValues)
 	if err != nil {
 		tx.Rollback()
-		return utils.NewInternalErrorResource("Failed to create attribute values", err.Error())
+		return utils.NewInternalErrorResource("Failed to create attribute values", err)
 	}
 
 
 	if err := tx.Commit().Error; err != nil {
-		return utils.NewInternalErrorResource("Failed to proceed", err.Error())
+		return utils.NewInternalErrorResource("Failed to proceed", err)
 	}
 
 	return utils.NewCreatedResource("Attribute created successfully", nil)
@@ -69,16 +69,29 @@ func (s *Service) CreateAttribute(req requests.AttributeRequest) utils.IResource
 
 func (s *Service) UpdateAttribute(id int64, req requests.AttributeRequest) utils.IResource {
 
-	if err := s.repo.UpdateAttribute(id, req); err != nil {
-		return utils.NewBadRequestResource(err.Error(), nil)
+	trx := s.repo.db.Begin()
+
+	if err := s.repo.UpdateAttribute(trx, id, req); err != nil {
+		trx.Rollback()
+		return utils.NewInternalErrorResource("Some issues has happend", nil)
 	}
 
-	detail, err := s.repo.GetAttributeByID(s.repo.db, id)
-	if err != nil {
-		return utils.NewBadRequestResource(err.Error(), nil)
+	if err := s.repo.DeleteAttributeValue(trx, id); err != nil {
+		trx.Rollback()
+		return utils.NewInternalErrorResource("Some issues has happend", nil)
+
 	}
 
-	return utils.NewOKResource("Attribute updated successfully", detail)
+	if _, err:= s.repo.CreateAttributeValuesBulk(trx, id, req.AttributeValues); err != nil {
+		trx.Rollback()
+		return utils.NewInternalErrorResource("Some issues has happend", nil)
+	}
+
+	if err := trx.Commit().Error; err != nil {
+		return utils.NewInternalErrorResource("Failed to proceed", err)
+	}
+
+	return utils.NewOKResource("Attribute updated successfully", nil)
 }
 
 func (s *Service) DeleteAttribute(id int64) utils.IResource {
@@ -92,7 +105,7 @@ func (s *Service) DeleteAttribute(id int64) utils.IResource {
 func (s *Service) ListAttributes(pagination *utils.Pagination) utils.IResource {
 	items, total, err := s.repo.ListAttributes(pagination)
 	if err != nil {
-		return utils.NewInternalErrorResource("Failed to retrieve attributes", err.Error())
+		return utils.NewInternalErrorResource("Failed to retrieve attributes", err)
 	}
 
 	pagination.SetTotal(total)
@@ -108,7 +121,7 @@ func (s *Service) GetAttributeByID(id int64) utils.IResource {
 	detailsAttributesValues, err := s.repo.GetAttributeValuesResponse(id)
 
 	if err != nil {
-		return utils.NewInternalErrorResource("Failed to retrieve attribute values", err.Error())
+		return utils.NewInternalErrorResource("Failed to retrieve attribute values", err)
 	}
 
 	AttributeResponse := &requests.AttributeResponse{
@@ -124,7 +137,7 @@ func (s *Service) GetAttributeByID(id int64) utils.IResource {
 func (s *Service) ListDeletedAttributes(pagination *utils.Pagination) utils.IResource {
 	items, total, err := s.repo.ListDeletedAttributes(pagination)
 	if err != nil {
-		return utils.NewInternalErrorResource("Failed to retrieve deleted attributes", err.Error())
+		return utils.NewInternalErrorResource("Failed to retrieve deleted attributes", err)
 	}
 
 	pagination.SetTotal(total)
@@ -147,7 +160,7 @@ func (s *Service) RecoverAttribute(id int64) utils.IResource {
 func (s *Service) ListAttributeValues(attributeID int64, pagination *utils.Pagination) utils.IResource {
 	items, total, err := s.repo.ListAttributeValues(attributeID, pagination)
 	if err != nil {
-		return utils.NewInternalErrorResource("Failed to retrieve attribute values", err.Error())
+		return utils.NewInternalErrorResource("Failed to retrieve attribute values", err)
 	}
 
 	pagination.SetTotal(total)
@@ -166,7 +179,7 @@ func (s *Service) DeleteAttributeValue(attributeID, valueID int64) utils.IResour
 func (s *Service) ListDeletedAttributeValues(attributeID int64, pagination *utils.Pagination) utils.IResource {
 	items, total, err := s.repo.ListDeletedAttributeValues(attributeID, pagination)
 	if err != nil {
-		return utils.NewInternalErrorResource("Failed to retrieve deleted attribute values", err.Error())
+		return utils.NewInternalErrorResource("Failed to retrieve deleted attribute values", err)
 	}
 
 	pagination.SetTotal(total)

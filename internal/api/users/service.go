@@ -136,7 +136,7 @@ func (s *service) UpdateProfile(id int64, firstName, lastName string) utils.IRes
 func (s *service) List(pagination *utils.Pagination) utils.IResource {
 	users, total, err := s.repo.List(pagination)
 	if err != nil {
-		return utils.NewInternalErrorResource("Failed to retrieve users", err.Error())
+		return utils.NewInternalErrorResource("Failed to retrieve users", err)
 	}
 
 	pagination.SetTotal(total)

@@ -157,7 +157,7 @@ func (s *service) Delete(id int64) utils.IResource {
 func (s *service) List(pagination *utils.Pagination) utils.IResource {
 	admins, total, err := s.repo.List(pagination)
 	if err != nil {
-		return utils.NewInternalErrorResource("Failed to retrieve admins", err.Error())
+		return utils.NewInternalErrorResource("Failed to retrieve admins", err)
 	}
 
 	pagination.SetTotal(total)

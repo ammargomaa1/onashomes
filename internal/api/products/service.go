@@ -194,7 +194,7 @@ func (s *service) DeleteProduct(ctx context.Context, id int64) utils.IResource {
 func (s *service) ListProducts(ctx context.Context, pagination *utils.Pagination) utils.IResource {
 	products, total, err := s.repo.ListAdminProducts(ctx, pagination)
 	if err != nil {
-		return utils.NewInternalErrorResource("Failed to retrieve products", err.Error())
+		return utils.NewInternalErrorResource("Failed to retrieve products", err)
 	}
 
 	pagination.SetTotal(total)
@@ -215,7 +215,7 @@ func (s *service) PublicListProducts(ctx context.Context, pagination *utils.Pagi
 	// For now, reuse admin listing and filter via WHERE is_active = TRUE in the repository.
 	products, total, err := s.repo.ListPublicProducts(ctx, pagination, q)
 	if err != nil {
-		return utils.NewInternalErrorResource("Failed to retrieve products", err.Error())
+		return utils.NewInternalErrorResource("Failed to retrieve products", err)
 	}
 
 	pagination.SetTotal(total)

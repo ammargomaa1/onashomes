@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -100,11 +101,11 @@ func NewNotFoundResource(message string, errors interface{}) IResource {
 	}
 }
 
-func NewInternalErrorResource(message string, errors interface{}) IResource {
+func NewInternalErrorResource(message string, errors error) IResource {
+	fmt.Printf("Internal server error: %s, details: %v", message, errors)
 	return &baseResource{
 		statusCode: http.StatusInternalServerError,
 		message:    message,
-		errors:     errors,
 	}
 }
 
