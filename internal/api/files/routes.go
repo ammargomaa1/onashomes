@@ -27,6 +27,9 @@ func RegisterRoutes(router *gin.RouterGroup, controller *Controller) {
 			
 			// Delete file - requires files.delete permission
 			authenticated.DELETE("/:id", middleware.RequirePermission("files.delete"), controller.DeleteFile)
+
+			// Get file by path - requires files.view permission
+			files.GET("/path/*path", controller.GetFileByPath)
 		}
 	}
 }

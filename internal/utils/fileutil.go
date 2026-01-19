@@ -223,3 +223,23 @@ func (f *FileUtil) GetRelativePath(fullPath string) (string, error) {
 
 	return relativePath, nil
 }
+
+// ReadFile reads the content of a file from storage
+func (f *FileUtil) ReadFile(relativePath string) ([]byte, error) {
+	// Clean and validate the path
+	cleanPath := f.cleanPath(relativePath)
+	if cleanPath == "" {
+		return nil, fmt.Errorf("invalid file path: %s", relativePath)
+	}
+
+	// Create full path
+	fullPath := filepath.Join(f.baseDir, cleanPath)
+
+	// Read file
+	data, err := os.ReadFile(fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %s: %v", fullPath, err)
+	}
+
+	return data, nil
+}

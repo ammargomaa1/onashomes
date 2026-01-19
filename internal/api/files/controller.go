@@ -143,6 +143,23 @@ func (c *Controller) GetFile(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"success": true, "message": "File retrieved successfully", "data": fileResponse})
 }
 
+//GetFile by path
+func (c *Controller) GetFileByPath(ctx *gin.Context) {
+	path := ctx.Param("path")
+	if path == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Invalid file path"})
+		return
+	}
+
+	file, err := c.fileService.GetFileByPath(path)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"success": false, "message": "File not found"})
+		return
+	}
+
+	ctx.Data(http.StatusOK, "application/octet-stream", file)
+}
+
 // ListFiles returns paginated list of files
 func (c *Controller) ListFiles(ctx *gin.Context) {
 	// Parse pagination parameters

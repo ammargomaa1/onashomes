@@ -9,6 +9,7 @@ import (
 	"github.com/onas/ecommerce-api/config"
 	"github.com/onas/ecommerce-api/internal/api/admins"
 	"github.com/onas/ecommerce-api/internal/api/attributes"
+	"github.com/onas/ecommerce-api/internal/api/brand"
 	"github.com/onas/ecommerce-api/internal/api/files"
 	"github.com/onas/ecommerce-api/internal/api/products"
 	"github.com/onas/ecommerce-api/internal/api/suppliers"
@@ -115,6 +116,12 @@ func main() {
 		productService := products.NewService(sqlDB, productRepo)
 		productController := products.NewController(productService)
 		products.RegisterRoutes(api, productController)
+
+		// Brand module (admin)
+		brandRepo := brand.NewRepository()
+		brandService := brand.NewService(brandRepo)
+		brandController := brand.NewController(brandService)
+		brand.RegisterRoutes(api, brandController)
 	}
 
 	// Scan routes and sync permissions to database
