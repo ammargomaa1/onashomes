@@ -19,6 +19,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.User{},
 		&models.Admin{},
 		&models.File{},
+		&models.Section{},
+		&models.Category{},
 	)
 
 	if err != nil {
@@ -75,7 +77,7 @@ func SeedDefaultData(db *gorm.DB) error {
 func ensureDefaultAdmin(db *gorm.DB) error {
 	var adminCount int64
 	db.Model(&models.Admin{}).Where("email = ?", "admin@onas.com").Count(&adminCount)
-	
+
 	if adminCount > 0 {
 		fmt.Println("✓ Default admin already exists")
 		return nil
