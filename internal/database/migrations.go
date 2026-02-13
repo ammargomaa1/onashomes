@@ -21,6 +21,12 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.File{},
 		&models.Section{},
 		&models.Category{},
+		// Phase 2 models
+		&models.StoreFront{},
+		&models.ProductSEO{},
+		&models.ProductImage{},
+		&models.VariantInventory{},
+		&models.InventoryAdjustment{},
 	)
 
 	if err != nil {
@@ -41,7 +47,10 @@ func SeedDefaultData(db *gorm.DB) error {
 	db.Model(&models.Role{}).Count(&roleCount)
 	if roleCount > 0 {
 		fmt.Println("✓ Roles already exist, skipping role creation...")
-		return ensureDefaultAdmin(db)
+		if err := ensureDefaultAdmin(db); err != nil {
+			return err
+		}
+		return seedDefaultStoreFront(db)
 	}
 
 	// Create Super Admin role (permissions will be assigned by scanner)
@@ -70,6 +79,38 @@ func SeedDefaultData(db *gorm.DB) error {
 	}
 
 	fmt.Println("✓ Default roles and admin user created successfully")
+
+	// Seed default storefront
+	if err := seedDefaultStoreFront(db); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// seedDefaultStoreFront creates a default store front if none exist
+func seedDefaultStoreFront(db *gorm.DB) error {
+	var count int64
+	db.Model(&models.StoreFront{}).Count(&count)
+	if count > 0 {
+		fmt.Println("✓ Store fronts already exist, skipping...")
+		return nil
+	}
+
+	sf := models.StoreFront{
+		Name:            "Onas Homes",
+		Slug:            "onas-homes",
+		Domain:          "localhost",
+		Currency:        "SAR",
+		DefaultLanguage: "ar",
+		IsActive:        true,
+	}
+
+	if err := db.Create(&sf).Error; err != nil {
+		return fmt.Errorf("failed to create default store front: %v", err)
+	}
+
+	fmt.Println("✓ Default store front created: Onas Homes (localhost)")
 	return nil
 }
 

@@ -67,8 +67,12 @@ func (p *Pagination) Paginate(db *gorm.DB, model interface{}) *gorm.DB {
 
 	offset := (p.Page - 1) * p.Limit
 
-	// Apply offset and limit to the original query
-	query := db.Offset(offset).Limit(p.Limit)
+	// Apply offset and limit — scope to the model so GORM knows the table
+	query := db
+	if model != nil {
+		query = query.Model(model)
+	}
+	query = query.Offset(offset).Limit(p.Limit)
 
 	// Apply sorting
 	if p.Sort != "" {

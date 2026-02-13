@@ -108,25 +108,15 @@ func (r *Repository) IsSectionIDExists(db *gorm.DB, id int64) (bool, error) {
 	return count > 0, nil
 }
 
-func (r *Repository) ListSectionsForDropdown(db *gorm.DB) ([]responses.SectionDropdownResponse, error) {
-
-	var list []dtos.SectionDTO
+func (r *Repository) ListSectionsForDropdown(db *gorm.DB) ([]utils.DropdownItem, error) {
+	var items []utils.DropdownItem
 	err := db.Table("sections").
-		Select("id, name_ar, name_en").
+		Select("id, name_en, name_ar").
 		Where("deleted_at IS NULL").
 		Order("name_en").
-		Scan(&list).Error
+		Scan(&items).Error
 	if err != nil {
 		return nil, err
 	}
-
-	dropdownList := []responses.SectionDropdownResponse{}
-	for _, section := range list {
-		dropdownList = append(dropdownList, responses.SectionDropdownResponse{
-			ID:   section.ID,
-			Name: section.GetName(),
-		})
-	}
-
-	return dropdownList, nil
+	return items, nil
 }

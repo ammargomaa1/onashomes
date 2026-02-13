@@ -80,11 +80,21 @@ func (s *Scanner) addPredefinedPermissions() {
 		{Name: "files.update", Description: "Update existing files", Module: "files", Action: "update"},
 		{Name: "files.delete", Description: "Delete existing files", Module: "files", Action: "delete"},
 
-		// Product permissions (for future use)
+		// Product permissions
 		{Name: "products.view", Description: "View and list products", Module: "products", Action: "view"},
 		{Name: "products.create", Description: "Create new products", Module: "products", Action: "create"},
 		{Name: "products.update", Description: "Update existing products", Module: "products", Action: "update"},
 		{Name: "products.delete", Description: "Delete existing products", Module: "products", Action: "delete"},
+
+		// Phase 2: Inventory permissions
+		{Name: "inventory.adjust", Description: "Adjust product inventory quantities", Module: "inventory", Action: "adjust"},
+		{Name: "inventory.view", Description: "View inventory levels", Module: "inventory", Action: "view"},
+
+		// Phase 2: StoreFront permissions
+		{Name: "storefronts.manage", Description: "Manage store fronts (CRUD)", Module: "storefronts", Action: "manage"},
+
+		// Phase 2: SEO permissions
+		{Name: "seo.manage", Description: "Manage product SEO metadata", Module: "seo", Action: "manage"},
 	}
 
 	for _, perm := range predefined {
@@ -137,7 +147,7 @@ func (s *Scanner) extractPermissionsFromRoute(route gin.RouteInfo) {
 	if strings.HasPrefix(module, ":") && len(pathParts) >= 3 {
 		if deductParts == 0 {
 			deductParts = 2
-		}else{
+		} else {
 			deductParts++
 		}
 		module = pathParts[len(pathParts)-deductParts]

@@ -12,8 +12,11 @@ import (
 	"github.com/onas/ecommerce-api/internal/api/brand"
 	"github.com/onas/ecommerce-api/internal/api/categories"
 	"github.com/onas/ecommerce-api/internal/api/files"
+	"github.com/onas/ecommerce-api/internal/api/inventory"
 	"github.com/onas/ecommerce-api/internal/api/products"
 	"github.com/onas/ecommerce-api/internal/api/sections"
+	"github.com/onas/ecommerce-api/internal/api/storeassignment"
+	"github.com/onas/ecommerce-api/internal/api/storefronts"
 	"github.com/onas/ecommerce-api/internal/api/suppliers"
 	"github.com/onas/ecommerce-api/internal/api/users"
 	"github.com/onas/ecommerce-api/internal/database"
@@ -136,6 +139,31 @@ func main() {
 		categoriesService := categories.NewService(categoriesRepo, db)
 		categoriesController := categories.NewController(categoriesService)
 		categories.RegisterRoutes(api, categoriesController)
+
+		// StoreFront module (Phase 2)
+		sfRepo := storefronts.NewRepository(db)
+		sfService := storefronts.NewService(sfRepo)
+		sfController := storefronts.NewController(sfService)
+		storefronts.RegisterRoutes(api, sfController)
+
+		// Inventory module (Phase 2)
+		invRepo := inventory.NewRepository(db)
+		invService := inventory.NewService(db, invRepo)
+		invController := inventory.NewController(invService)
+		inventory.RegisterRoutes(api, invController)
+
+		// Products V2 module (Phase 2)
+		productV2Repo := products.NewV2Repository(db)
+		productV2Service := products.NewServiceV2(db, productV2Repo, invRepo)
+		productV2Controller := products.NewControllerV2(productV2Service)
+		products.RegisterV2Routes(api, productV2Controller)
+
+		// Store Assignment routes (Phase 2 - M2M assignments)
+		saHandler := storeassignment.NewHandler(db)
+		saHandler.RegisterEntityStoreRoutes(api, api, "brands", "brand_storefront", "brand_id", "brands.update")
+		saHandler.RegisterEntityStoreRoutes(api, api, "categories", "category_storefront", "category_id", "categories.update")
+		saHandler.RegisterEntityStoreRoutes(api, api, "sections", "section_storefront", "section_id", "sections.update")
+		saHandler.RegisterEntityStoreRoutes(api, api, "suppliers", "supplier_storefront", "supplier_id", "suppliers.update")
 	}
 
 	// Scan routes and sync permissions to database

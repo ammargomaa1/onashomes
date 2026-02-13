@@ -80,7 +80,6 @@ func (c *Controller) DeleteBrand(ctx *gin.Context) {
 	utils.WriteResource(ctx, res)
 }
 
-
 func (c *Controller) RestoreBrand(ctx *gin.Context) {
 	// Implementation for restoring a brand
 	idParam := ctx.Param("id")
@@ -98,5 +97,10 @@ func (c *Controller) ListDeletedBrands(ctx *gin.Context) {
 	pagination := utils.ParsePaginationParams(ctx)
 
 	res := c.service.ListDeletedBrands(pagination)
+	utils.WriteResource(ctx, res)
+}
+
+func (c *Controller) ListBrandsForDropdown(ctx *gin.Context) {
+	res := c.service.ListBrandsForDropdown()
 	utils.WriteResource(ctx, res)
 }

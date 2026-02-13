@@ -19,5 +19,5 @@ func RegisterRoutes(router *gin.RouterGroup, controller *Controller) {
 	}
 
 	// Public dropdown endpoint (no auth required)
-	router.GET("/sections/dropdown", controller.ListSectionsForDropdown)
+	adminRoutes.GET("/dropdown", controller.ListSectionsForDropdown)
 }

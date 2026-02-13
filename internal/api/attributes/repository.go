@@ -12,7 +12,6 @@ import (
 
 // Repository defines persistence operations for attributes and attribute values.
 
-
 type Repository struct {
 	db *gorm.DB
 }
@@ -31,7 +30,6 @@ func (r *Repository) CreateAttribute(db *gorm.DB, req requests.AttributeRequest)
 		"INSERT INTO attributes (name_ar, name_en) VALUES ($1, $2) RETURNING id",
 		req.NameAr, req.NameEn,
 	).Scan(&id).Error
-
 
 	return id, err
 }
@@ -53,7 +51,7 @@ func (r *Repository) RestoreAttributeValue(attributeID, valueID int64) error {
 		"UPDATE attribute_values SET deleted_at = NULL, is_active = TRUE, updated_at = NOW() WHERE id = $1 AND attribute_id = $2 AND deleted_at IS NOT NULL",
 		valueID, attributeID,
 	).Error
-	
+
 	return err
 }
 
@@ -88,7 +86,6 @@ func (r *Repository) RestoreAttribute(id int64) error {
 		return err
 	}
 
-
 	// Restore its values as active
 	err = r.db.Exec(
 		"UPDATE attribute_values SET deleted_at = NULL, is_active = TRUE, updated_at = NOW() WHERE attribute_id = $1 AND deleted_at IS NOT NULL",
@@ -99,7 +96,7 @@ func (r *Repository) RestoreAttribute(id int64) error {
 }
 
 func (r *Repository) ListAttributes(pagination *utils.Pagination) ([]AttributeListItem, int64, error) {
-	
+
 	var list []models.Attribute
 	err := pagination.Paginate(r.db, models.Attribute{}).Scan(&list).Error
 	if err != nil {
@@ -109,8 +106,8 @@ func (r *Repository) ListAttributes(pagination *utils.Pagination) ([]AttributeLi
 	var listItems []AttributeListItem
 	for _, attr := range list {
 		listItems = append(listItems, AttributeListItem{
-			ID:       attr.ID,
-			Name:     utils.GetLocalizedStringFromContext(attr.NameAr, attr.NameEn),
+			ID:        attr.ID,
+			Name:      utils.GetLocalizedStringFromContext(attr.NameAr, attr.NameEn),
 			CreatedAt: attr.CreatedAt,
 		})
 	}
@@ -137,14 +134,13 @@ func (r *Repository) ListDeletedAttributeValues(attributeID int64, pagination *u
 		attributeID, pagination.Limit, offset,
 	).Scan(&list).Error
 
-
 	return list, total, err
 }
 
 // ListDeletedAttributes returns attributes that have been soft-deleted.
 func (r *Repository) ListDeletedAttributes(pagination *utils.Pagination) ([]AttributeListItem, int64, error) {
 
-	var list []models.Attribute		
+	var list []models.Attribute
 	err := pagination.Paginate(r.db.Unscoped().Where("deleted_at IS NOT NULL"), models.Attribute{}).Scan(&list).Error
 	if err != nil {
 		return nil, 0, err
@@ -153,8 +149,8 @@ func (r *Repository) ListDeletedAttributes(pagination *utils.Pagination) ([]Attr
 	var listItems []AttributeListItem
 	for _, attr := range list {
 		listItems = append(listItems, AttributeListItem{
-			ID:       attr.ID,	
-			Name:     utils.GetLocalizedStringFromContext(attr.NameAr, attr.NameEn),
+			ID:        attr.ID,
+			Name:      utils.GetLocalizedStringFromContext(attr.NameAr, attr.NameEn),
 			CreatedAt: attr.CreatedAt,
 		})
 	}
@@ -192,7 +188,7 @@ func (r *Repository) ListAttributeValues(attributeID int64, pagination *utils.Pa
 		"SELECT id, value, sort_order, is_active FROM attribute_values WHERE attribute_id = $1 AND deleted_at IS NULL ORDER BY sort_order, value LIMIT $2 OFFSET $3",
 		attributeID, pagination.Limit, offset,
 	).Scan(&list).Error
-	
+
 	return list, total, err
 }
 
@@ -299,13 +295,11 @@ func (r *Repository) GetAttributeValuesResponse(
 	return values, err
 }
 
-
 func (r *Repository) UpdateAttributeValue(attributeID, valueID int64, req requests.AttributeValueRequest) error {
 	err := r.db.Raw(
 		"UPDATE attribute_values SET value_ar = $1, value_en = $2, sort_order = $3, is_active = $4, updated_at = $5 WHERE id = $6 AND attribute_id = $7 AND deleted_at IS NULL",
 		req.ValueAr, req.ValueEn, req.SortOrder, req.IsActive, time.Now(), valueID, attributeID,
 	).Error
-
 
 	return err
 }
@@ -325,4 +319,17 @@ func (r *Repository) DeleteAttributeValue(db *gorm.DB, attributeID int64) error 
 	).Error
 
 	return err
+}
+
+func (r *Repository) ListAttributesForDropdown() ([]utils.DropdownItem, error) {
+	var items []utils.DropdownItem
+	err := r.db.Table("attributes").
+		Select("id, name_en, name_ar").
+		Where("deleted_at IS NULL").
+		Order("name_en").
+		Scan(&items).Error
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
 }

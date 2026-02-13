@@ -132,3 +132,16 @@ func (r *Repository) IsCategoryIDExists(db *gorm.DB, id int64) (bool, error) {
 	}
 	return count > 0, nil
 }
+
+func (r *Repository) ListCategoriesForDropdown(db *gorm.DB) ([]utils.DropdownItem, error) {
+	var items []utils.DropdownItem
+	err := db.Table("categories").
+		Select("id, name_en, name_ar").
+		Where("deleted_at IS NULL").
+		Order("name_en").
+		Scan(&items).Error
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}

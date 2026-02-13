@@ -18,4 +18,7 @@ func RegisterRoutes(router *gin.RouterGroup, controller *Controller) {
 		adminRoutes.PUT("/:id/restore", middleware.RequirePermission("brands.update"), controller.RestoreBrand)
 		adminRoutes.GET("/deleted", middleware.RequirePermission("brands.view"), controller.ListDeletedBrands)
 	}
+
+	// Dropdown endpoint (admin auth, no permission check)
+	adminRoutes.GET("/dropdown", controller.ListBrandsForDropdown)
 }

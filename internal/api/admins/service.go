@@ -108,8 +108,15 @@ func (s *service) RefreshToken(refreshToken string) utils.IResource {
 		return utils.NewUnauthorizedResource(err.Error(), nil)
 	}
 
+	// Generate new refresh token
+	newRefreshToken, err := utils.GenerateToken(claims.EntityID, claims.EntityType, claims.RoleID, utils.RefreshToken)
+	if err != nil {
+		return utils.NewUnauthorizedResource(err.Error(), nil)
+	}
+
 	data := map[string]string{
-		"access_token": accessToken,
+		"access_token":  accessToken,
+		"refresh_token": newRefreshToken,
 	}
 
 	return utils.NewOKResource("Token refreshed successfully", data)

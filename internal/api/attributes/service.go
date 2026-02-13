@@ -52,13 +52,11 @@ func (s *Service) CreateAttribute(req requests.AttributeRequest) utils.IResource
 		return utils.NewBadRequestResource("name has to be unique", nil)
 	}
 
-
 	_, err = s.repo.CreateAttributeValuesBulk(tx, id, req.AttributeValues)
 	if err != nil {
 		tx.Rollback()
 		return utils.NewInternalErrorResource("Failed to create attribute values", err)
 	}
-
 
 	if err := tx.Commit().Error; err != nil {
 		return utils.NewInternalErrorResource("Failed to proceed", err)
@@ -82,7 +80,7 @@ func (s *Service) UpdateAttribute(id int64, req requests.AttributeRequest) utils
 
 	}
 
-	if _, err:= s.repo.CreateAttributeValuesBulk(trx, id, req.AttributeValues); err != nil {
+	if _, err := s.repo.CreateAttributeValuesBulk(trx, id, req.AttributeValues); err != nil {
 		trx.Rollback()
 		return utils.NewInternalErrorResource("Some issues has happend", nil)
 	}
@@ -113,7 +111,7 @@ func (s *Service) ListAttributes(pagination *utils.Pagination) utils.IResource {
 }
 
 func (s *Service) GetAttributeByID(id int64) utils.IResource {
-	detail, err := s.repo.GetAttributeByID(s.repo.db,id)
+	detail, err := s.repo.GetAttributeByID(s.repo.db, id)
 	if err != nil {
 		return utils.NewNotFoundResource("Attribute not found", nil)
 	}
@@ -126,7 +124,7 @@ func (s *Service) GetAttributeByID(id int64) utils.IResource {
 
 	AttributeResponse := &requests.AttributeResponse{
 		ID:     detail.ID,
-		NameAr:   detail.NameAr,
+		NameAr: detail.NameAr,
 		NameEn: detail.NameEn,
 		Values: detailsAttributesValues,
 	}
@@ -167,7 +165,6 @@ func (s *Service) ListAttributeValues(attributeID int64, pagination *utils.Pagin
 	return utils.NewPaginatedOKResource("Attribute values retrieved successfully", items, pagination.GetMeta())
 }
 
-
 func (s *Service) DeleteAttributeValue(attributeID, valueID int64) utils.IResource {
 	if err := s.repo.SoftDeleteAttributeValue(attributeID, valueID); err != nil {
 		return utils.NewBadRequestResource(err.Error(), nil)
@@ -201,4 +198,12 @@ func (s *Service) RecoverAttributeValue(attributeID, valueID int64) utils.IResou
 	}
 
 	return utils.NewOKResource("Attribute value recovered successfully", value)
+}
+
+func (s *Service) ListAttributesForDropdown() utils.IResource {
+	items, err := s.repo.ListAttributesForDropdown()
+	if err != nil {
+		return utils.NewInternalErrorResource("Failed to retrieve attributes", err)
+	}
+	return utils.NewOKResource("Attributes retrieved successfully", items)
 }

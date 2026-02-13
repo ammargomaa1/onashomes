@@ -20,4 +20,7 @@ func RegisterRoutes(router *gin.RouterGroup, controller *Controller) {
 		adminRoutes.DELETE("/:id", middleware.RequirePermission("attributes.delete"), controller.DeleteAttribute)
 		adminRoutes.PUT("/:id/recover", middleware.RequirePermission("attributes.update"), controller.RecoverAttribute)
 	}
+
+	// Dropdown endpoint (admin auth, no permission check)
+	adminRoutes.GET("/dropdown", controller.ListAttributesForDropdown)
 }

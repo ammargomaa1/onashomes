@@ -29,7 +29,7 @@ func (r *Repository) ListBrands(db *gorm.DB, pagination *utils.Pagination) ([]re
 		logo.file_path AS logo_path,
 		icon.file_path AS icon_path
 	`).
-	Where(" brands.deleted_at IS NULL")
+		Where(" brands.deleted_at IS NULL")
 
 	err := pagination.Paginate(query, nil).
 		Scan(&list).Error
@@ -56,7 +56,7 @@ func (r *Repository) ListDeletedBrands(db *gorm.DB, pagination *utils.Pagination
 		logo.file_path AS logo_path,
 		icon.file_path AS icon_path
 	`).
-	Where(" brands.deleted_at IS NOT NULL")
+		Where(" brands.deleted_at IS NOT NULL")
 
 	err := pagination.Paginate(query, nil).
 		Scan(&list).Error
@@ -115,7 +115,6 @@ func (r *Repository) IsBrandIdExists(db *gorm.DB, id int64) (bool, error) {
 	return count > 0, nil
 }
 
-
 func (r *Repository) IsBrandDeletedIdExists(db *gorm.DB, id int64) (bool, error) {
 	var count int64
 	err := db.Model(&models.Brand{}).Unscoped().Where("id = ? AND deleted_at IS NOT NULL", id).Count(&count).Error
@@ -123,4 +122,17 @@ func (r *Repository) IsBrandDeletedIdExists(db *gorm.DB, id int64) (bool, error)
 		return false, err
 	}
 	return count > 0, nil
+}
+
+func (r *Repository) ListBrandsForDropdown(db *gorm.DB) ([]utils.DropdownItem, error) {
+	var items []utils.DropdownItem
+	err := db.Table("brands").
+		Select("id, name_en, name_ar").
+		Where("deleted_at IS NULL").
+		Order("name_en").
+		Scan(&items).Error
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
 }

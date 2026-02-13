@@ -18,4 +18,7 @@ func RegisterRoutes(router *gin.RouterGroup, controller *Controller) {
 		adminRoutes.GET("/deleted", middleware.RequirePermission("categories.view"), controller.ListDeletedCategories)
 		adminRoutes.GET("/by-section/:section_id", middleware.RequirePermission("categories.view"), controller.ListCategoriesBySection)
 	}
+
+	// Dropdown endpoint (admin auth, no permission check)
+	adminRoutes.GET("/dropdown", controller.ListCategoriesForDropdown)
 }

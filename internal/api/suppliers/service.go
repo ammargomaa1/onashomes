@@ -95,3 +95,11 @@ func (s *Service) Deactivate(id int64) utils.IResource {
 
 	return utils.NewNoContentResource()
 }
+
+func (s *Service) ListForDropdown() utils.IResource {
+	items, err := s.repo.ListForDropdown()
+	if err != nil {
+		return utils.NewInternalErrorResource("Failed to retrieve suppliers", err)
+	}
+	return utils.NewOKResource("Suppliers retrieved successfully", items)
+}

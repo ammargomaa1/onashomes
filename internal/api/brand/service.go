@@ -164,7 +164,6 @@ func (s *Service) RestoreBrand(id int64) utils.IResource {
 	return utils.NewOKResource("Brand restored successfully", nil)
 }
 
-
 func (s *Service) ListDeletedBrands(pagination *utils.Pagination) utils.IResource {
 	db := database.GetDB()
 	brands, err := s.repo.ListDeletedBrands(db, pagination)
@@ -173,4 +172,13 @@ func (s *Service) ListDeletedBrands(pagination *utils.Pagination) utils.IResourc
 	}
 
 	return utils.NewPaginatedOKResource("Deleted brands retrieved successfully", brands, pagination.GetMeta())
+}
+
+func (s *Service) ListBrandsForDropdown() utils.IResource {
+	db := database.GetDB()
+	items, err := s.repo.ListBrandsForDropdown(db)
+	if err != nil {
+		return utils.NewInternalErrorResource("Failed to retrieve brands", err)
+	}
+	return utils.NewOKResource("Brands retrieved successfully", items)
 }

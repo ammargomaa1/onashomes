@@ -106,3 +106,8 @@ func (h *Handler) Deactivate(c *gin.Context) {
 	res := h.service.Deactivate(id)
 	utils.WriteResource(c, res)
 }
+
+func (h *Handler) ListForDropdown(c *gin.Context) {
+	res := h.service.ListForDropdown()
+	utils.WriteResource(c, res)
+}

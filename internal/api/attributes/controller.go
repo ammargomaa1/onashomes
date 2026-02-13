@@ -134,8 +134,6 @@ func (c *Controller) ListDeletedAttributeValues(ctx *gin.Context) {
 	utils.WriteResource(ctx, res)
 }
 
-
-
 // RecoverAttributeValue handles PUT /api/admin/attributes/:id/values/:valueId/recover
 func (c *Controller) RecoverAttributeValue(ctx *gin.Context) {
 	idParam := ctx.Param("id")
@@ -179,5 +177,10 @@ func (c *Controller) DeleteAttributeValue(ctx *gin.Context) {
 	}
 
 	res := c.service.DeleteAttributeValue(attributeID, valueID)
+	utils.WriteResource(ctx, res)
+}
+
+func (c *Controller) ListAttributesForDropdown(ctx *gin.Context) {
+	res := c.service.ListAttributesForDropdown()
 	utils.WriteResource(ctx, res)
 }

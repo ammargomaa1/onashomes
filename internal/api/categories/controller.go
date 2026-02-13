@@ -108,3 +108,8 @@ func (c *Controller) RestoreCategory(ctx *gin.Context) {
 	res := c.service.RestoreCategory(id)
 	utils.WriteResource(ctx, res)
 }
+
+func (c *Controller) ListCategoriesForDropdown(ctx *gin.Context) {
+	res := c.service.ListCategoriesForDropdown()
+	utils.WriteResource(ctx, res)
+}

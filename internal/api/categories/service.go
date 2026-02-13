@@ -108,3 +108,11 @@ func (s *Service) RestoreCategory(id int64) utils.IResource {
 
 	return utils.NewOKResource("category restored successfully", nil)
 }
+
+func (s *Service) ListCategoriesForDropdown() utils.IResource {
+	items, err := s.repo.ListCategoriesForDropdown(s.db)
+	if err != nil {
+		return utils.NewInternalErrorResource("failed to fetch categories", err)
+	}
+	return utils.NewOKResource("categories fetched successfully", items)
+}

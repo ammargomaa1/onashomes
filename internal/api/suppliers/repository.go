@@ -51,3 +51,16 @@ func (r *Repository) ToggleStatus(id int64, isActive bool) error {
 			"is_active": isActive,
 		}).Error
 }
+
+func (r *Repository) ListForDropdown() ([]utils.DropdownItem, error) {
+	var items []utils.DropdownItem
+	err := r.db.Table("suppliers").
+		Select("id, company_name AS name_en, company_name AS name_ar").
+		Where("deleted_at IS NULL").
+		Order("company_name").
+		Scan(&items).Error
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}

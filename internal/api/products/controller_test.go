@@ -67,7 +67,7 @@ func (f *fakeService) PublicListProducts(ctx context.Context, pg *utils.Paginati
 	if f.publicListFn != nil {
 		items, total, err := f.publicListFn(ctx, pg, q)
 		if err != nil {
-			return utils.NewInternalErrorResource("Failed to retrieve products", err.Error())
+			return utils.NewInternalErrorResource("Failed to retrieve products", err)
 		}
 		pg.SetTotal(total)
 		return utils.NewPaginatedOKResource("Products retrieved successfully", items, pg.GetMeta())
