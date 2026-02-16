@@ -22,19 +22,6 @@ func NewServiceV2(db *gorm.DB, repo *V2Repository, invRepo *inventory.Repository
 	return &ServiceV2{db: db, repo: repo, invRepo: invRepo}
 }
 
-// ValidateAttributeType validates the attribute_type field
-func validateAttributeType(attrType *string) error {
-	if attrType == nil {
-		return nil
-	}
-	switch *attrType {
-	case models.AttributeTypeSize, models.AttributeTypeColor:
-		return nil
-	default:
-		return fmt.Errorf("attribute_type must be 'size', 'color', or null")
-	}
-}
-
 // validateVariantAttributeRule checks that variant matches the product attribute type
 func validateVariantAttributeRule(product *models.Product, attributeValue string) error {
 	if product.AttributeType == nil {
@@ -49,9 +36,24 @@ func validateVariantAttributeRule(product *models.Product, attributeValue string
 	return nil
 }
 
+// resolveAttributeType fetches attribute name by ID
+func (s *ServiceV2) resolveAttributeType(id *int64) (*string, error) {
+	if id == nil {
+		return nil, nil
+	}
+	var attr models.Attribute
+	if err := s.db.First(&attr, *id).Error; err != nil {
+		return nil, fmt.Errorf("invalid attribute_type id: %d", *id)
+	}
+	// Use NameEn as the key for now
+	name := strings.ToLower(attr.NameEn)
+	return &name, nil
+}
+
 func (s *ServiceV2) CreateProductV2(req requests.CreateProductV2Request) utils.IResource {
-	// Validate attribute type
-	if err := validateAttributeType(req.AttributeType); err != nil {
+	// Resolve attribute type ID to string
+	attrType, err := s.resolveAttributeType(req.AttributeType)
+	if err != nil {
 		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
@@ -72,9 +74,32 @@ func (s *ServiceV2) CreateProductV2(req requests.CreateProductV2Request) utils.I
 		}
 	}
 
+
+
+	// Validate variants if any
+	if len(req.Variants) > 0 {
+		skuMap := make(map[string]bool)
+		for _, vReq := range req.Variants {
+			// 1. Check duplicates within the request
+			if skuMap[vReq.SKU] {
+				return utils.NewBadRequestResource(fmt.Sprintf("Duplicate SKU '%s' in request", vReq.SKU), nil)
+			}
+			skuMap[vReq.SKU] = true
+
+			// 2. Check duplicates in DB
+			unique, err := s.repo.IsSKUUnique(vReq.SKU, 0)
+			if err != nil {
+				return utils.NewInternalErrorResource("Failed to validate SKU uniqueness", err)
+			}
+			if !unique {
+				return utils.NewBadRequestResource(fmt.Sprintf("SKU '%s' is already taken", vReq.SKU), nil)
+			}
+		}
+	}
+
 	// Create product in transaction
 	var productID int64
-	err := s.db.Transaction(func(tx *gorm.DB) error {
+	err = s.db.Transaction(func(tx *gorm.DB) error {
 		product := &models.Product{
 			NameEn:             req.NameEn,
 			NameAr:             req.NameAr,
@@ -87,7 +112,7 @@ func (s *ServiceV2) CreateProductV2(req requests.CreateProductV2Request) utils.I
 			CategoryID:         req.CategoryID,
 			SupplierID:         req.SupplierID,
 			IsInternalSupplier: req.IsInternalSupplier,
-			AttributeType:      req.AttributeType,
+			AttributeType:      attrType,
 			Status:             models.ProductStatusDraft,
 			IsPublished:        false,
 			IsFeatured:         req.IsFeatured,
@@ -113,6 +138,52 @@ func (s *ServiceV2) CreateProductV2(req requests.CreateProductV2Request) utils.I
 			}
 		}
 
+		// Create Variants
+		if len(req.Variants) > 0 {
+			for _, vReq := range req.Variants {
+				if err := validateVariantAttributeRule(product, vReq.AttributeValue); err != nil {
+					return fmt.Errorf("variant validation failed: %w", err)
+				}
+				variant := &models.ProductVariant{
+					ProductID:      productID,
+					SKU:            vReq.SKU,
+					AttributeValue: vReq.AttributeValue,
+					Price:          vReq.Price,
+					CompareAtPrice: vReq.CompareAtPrice,
+					CostPrice:      vReq.CostPrice,
+					Weight:         vReq.Weight,
+					Length:         vReq.Length,
+					Width:          vReq.Width,
+					Height:         vReq.Height,
+					IsActive:       vReq.IsActive,
+				}
+				if vReq.Barcode != "" {
+					variant.Barcode = &vReq.Barcode
+				}
+
+				if err := repoTx.CreateVariantV2(variant); err != nil {
+					return fmt.Errorf("failed to create variant %s: %w", vReq.SKU, err)
+				}
+
+				// Create inventory for all storefronts
+				initialStock := 0
+				if vReq.Stock != nil {
+					initialStock = *vReq.Stock
+				}
+				for _, sfID := range req.StoreFrontIDs {
+					inv := models.VariantInventory{
+						ProductVariantID:  variant.ID,
+						StoreFrontID:      sfID,
+						Quantity:          initialStock,
+						LowStockThreshold: 5,
+					}
+					if err := repoTx.CreateVariantInventory(&inv); err != nil {
+						return fmt.Errorf("failed to create inventory for variant %s: %w", vReq.SKU, err)
+					}
+				}
+			}
+		}
+
 		return nil
 	})
 
@@ -134,7 +205,8 @@ func (s *ServiceV2) UpdateProductV2(id int64, req requests.UpdateProductV2Reques
 		return utils.NewNotFoundResource("Product not found", nil)
 	}
 
-	if err := validateAttributeType(req.AttributeType); err != nil {
+	attrType, err := s.resolveAttributeType(req.AttributeType)
+	if err != nil {
 		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
@@ -152,6 +224,32 @@ func (s *ServiceV2) UpdateProductV2(id int64, req requests.UpdateProductV2Reques
 		}
 	}
 
+	// Validate variants if any
+	if len(req.Variants) > 0 {
+		skuMap := make(map[string]bool)
+		for _, vReq := range req.Variants {
+			// 1. Check duplicates within the request
+			if skuMap[vReq.SKU] {
+				return utils.NewBadRequestResource(fmt.Sprintf("Duplicate SKU '%s' in request", vReq.SKU), nil)
+			}
+			skuMap[vReq.SKU] = true
+
+			// 2. Check duplicates in DB (exclude current variant ID if updating)
+			excludeID := int64(0)
+			if vReq.ID != nil {
+				excludeID = *vReq.ID
+			}
+
+			unique, err := s.repo.IsSKUUnique(vReq.SKU, excludeID)
+			if err != nil {
+				return utils.NewInternalErrorResource("Failed to validate SKU uniqueness", err)
+			}
+			if !unique {
+				return utils.NewBadRequestResource(fmt.Sprintf("SKU '%s' is already taken", vReq.SKU), nil)
+			}
+		}
+	}
+
 	err = s.db.Transaction(func(tx *gorm.DB) error {
 		product.NameEn = req.NameEn
 		product.NameAr = req.NameAr
@@ -164,7 +262,7 @@ func (s *ServiceV2) UpdateProductV2(id int64, req requests.UpdateProductV2Reques
 		product.CategoryID = req.CategoryID
 		product.SupplierID = req.SupplierID
 		product.IsInternalSupplier = req.IsInternalSupplier
-		product.AttributeType = req.AttributeType
+		product.AttributeType = attrType
 		product.IsFeatured = req.IsFeatured
 		product.IsNew = req.IsNew
 		product.IsBestSeller = req.IsBestSeller
@@ -183,6 +281,81 @@ func (s *ServiceV2) UpdateProductV2(id int64, req requests.UpdateProductV2Reques
 				return err
 			}
 		}
+
+		// Handle Variants (Upsert)
+			for _, vReq := range req.Variants {
+				if vReq.ID != nil && *vReq.ID > 0 {
+					// Update existing
+					var existing models.ProductVariant
+					if err := tx.Where("id = ? AND product_id = ?", *vReq.ID, id).First(&existing).Error; err != nil {
+						return fmt.Errorf("variant %d not found for product", *vReq.ID)
+					}
+
+					if err := validateVariantAttributeRule(product, vReq.AttributeValue); err != nil {
+						return fmt.Errorf("variant validation failed: %w", err)
+					}
+
+					existing.SKU = vReq.SKU
+					existing.AttributeValue = vReq.AttributeValue
+					existing.Price = vReq.Price
+					existing.CompareAtPrice = vReq.CompareAtPrice
+					existing.CostPrice = vReq.CostPrice
+					existing.Weight = vReq.Weight
+					existing.Length = vReq.Length
+					existing.Width = vReq.Width
+					existing.Height = vReq.Height
+					existing.IsActive = vReq.IsActive
+					if vReq.Barcode != "" {
+						existing.Barcode = &vReq.Barcode
+					}
+
+					if err := repoTx.UpdateVariantV2(&existing); err != nil {
+						return fmt.Errorf("failed to update variant %s: %w", vReq.SKU, err)
+					}
+				} else {
+					// Create new
+					if err := validateVariantAttributeRule(product, vReq.AttributeValue); err != nil {
+						return fmt.Errorf("variant validation failed: %w", err)
+					}
+
+					variant := &models.ProductVariant{
+						ProductID:      id,
+						SKU:            vReq.SKU,
+						AttributeValue: vReq.AttributeValue,
+						Price:          vReq.Price,
+						CompareAtPrice: vReq.CompareAtPrice,
+						CostPrice:      vReq.CostPrice,
+						Weight:         vReq.Weight,
+						Length:         vReq.Length,
+						Width:          vReq.Width,
+						Height:         vReq.Height,
+						IsActive:       vReq.IsActive,
+					}
+					if vReq.Barcode != "" {
+						variant.Barcode = &vReq.Barcode
+					}
+
+					if err := repoTx.CreateVariantV2(variant); err != nil {
+						return fmt.Errorf("failed to create new variant %s: %w", vReq.SKU, err)
+					}
+
+					// Create inventory for new variant
+					initialStock := 0
+					if vReq.Stock != nil {
+						initialStock = *vReq.Stock
+					}
+					for _, sfID := range req.StoreFrontIDs {
+						inv := models.VariantInventory{
+							ProductVariantID:  variant.ID,
+							StoreFrontID:      sfID,
+							Quantity:          initialStock,
+							LowStockThreshold: 5,
+						}
+						// Ignore error if exists (unlikely for new variant)
+						_ = repoTx.CreateVariantInventory(&inv)
+					}
+				}
+			}		
 
 		return nil
 	})
@@ -398,6 +571,24 @@ func (s *ServiceV2) CreateVariantV2(productID int64, req requests.CreateVariantV
 		return utils.NewInternalErrorResource("Failed to create variant", err)
 	}
 
+	// Create inventory for all storefronts
+	sfIDs, err := s.repo.GetProductStoreFrontIDs(productID)
+	if err == nil && len(sfIDs) > 0 {
+		initialStock := 0
+		if req.Stock != nil {
+			initialStock = *req.Stock
+		}
+		for _, sfID := range sfIDs {
+			inv := models.VariantInventory{
+				ProductVariantID:  variant.ID,
+				StoreFrontID:      sfID,
+				Quantity:          initialStock,
+				LowStockThreshold: 5, // Default
+			}
+			_ = s.repo.CreateVariantInventory(&inv)
+		}
+	}
+
 	return utils.NewCreatedResource("Variant created successfully", AdminVariantV2{
 		ID:             variant.ID,
 		SKU:            variant.SKU,
@@ -407,6 +598,9 @@ func (s *ServiceV2) CreateVariantV2(productID int64, req requests.CreateVariantV
 		CostPrice:      variant.CostPrice,
 		Barcode:        variant.Barcode,
 		Weight:         variant.Weight,
+		Length:         variant.Length,
+		Width:          variant.Width,
+		Height:         variant.Height,
 		IsActive:       variant.IsActive,
 	})
 }

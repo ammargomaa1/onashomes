@@ -95,6 +95,13 @@ func (s *Scanner) addPredefinedPermissions() {
 
 		// Phase 2: SEO permissions
 		{Name: "seo.manage", Description: "Manage product SEO metadata", Module: "seo", Action: "manage"},
+		// Order permissions
+		{Name: "orders.view", Description: "View and list orders", Module: "orders", Action: "view"},
+		{Name: "orders.create", Description: "Create new orders", Module: "orders", Action: "create"},
+		{Name: "orders.update", Description: "Update existing orders", Module: "orders", Action: "update"},
+		{Name: "orders.delete", Description: "Delete existing orders", Module: "orders", Action: "delete"},
+		{Name: "orders.confirm", Description: "Confirm orders", Module: "orders", Action: "confirm"},
+		{Name: "orders.cancel", Description: "Cancel orders", Module: "orders", Action: "cancel"},
 	}
 
 	for _, perm := range predefined {

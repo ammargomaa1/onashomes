@@ -10,6 +10,7 @@ func RegisterRoutes(router *gin.RouterGroup, controller *Controller) {
 	adminRoutes.Use(middleware.AuthMiddleware(), middleware.AdminAuthMiddleware())
 	{
 		adminRoutes.POST("/adjust", middleware.RequirePermission("inventory.adjust"), controller.AdjustInventory)
+		adminRoutes.POST("/bulk-update", middleware.RequirePermission("inventory.adjust"), controller.BulkUpdateInventory)
 		adminRoutes.GET("/store/:storeFrontId", middleware.RequirePermission("inventory.adjust"), controller.ListInventoryByStore)
 		adminRoutes.GET("/variant/:variantId/store/:storeFrontId", middleware.RequirePermission("inventory.adjust"), controller.GetVariantInventory)
 		adminRoutes.GET("/low-stock/:storeFrontId", middleware.RequirePermission("inventory.adjust"), controller.GetLowStockAlerts)

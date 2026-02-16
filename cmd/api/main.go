@@ -13,6 +13,7 @@ import (
 	"github.com/onas/ecommerce-api/internal/api/categories"
 	"github.com/onas/ecommerce-api/internal/api/files"
 	"github.com/onas/ecommerce-api/internal/api/inventory"
+	"github.com/onas/ecommerce-api/internal/api/orders"
 	"github.com/onas/ecommerce-api/internal/api/products"
 	"github.com/onas/ecommerce-api/internal/api/sections"
 	"github.com/onas/ecommerce-api/internal/api/storeassignment"
@@ -151,6 +152,12 @@ func main() {
 		invService := inventory.NewService(db, invRepo)
 		invController := inventory.NewController(invService)
 		inventory.RegisterRoutes(api, invController)
+
+		// Orders module (Priority 1)
+		orderRepo := orders.NewRepository(db)
+		orderService := orders.NewService(db, orderRepo, invService)
+		orderController := orders.NewController(orderService)
+		orders.RegisterRoutes(api, orderController)
 
 		// Products V2 module (Phase 2)
 		productV2Repo := products.NewV2Repository(db)

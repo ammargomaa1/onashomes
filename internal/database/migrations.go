@@ -27,6 +27,12 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.ProductImage{},
 		&models.VariantInventory{},
 		&models.InventoryAdjustment{},
+		&models.Order{},
+		&models.OrderItem{},
+		&models.OrderStatus{},
+		&models.PaymentStatus{},
+		&models.FulfillmentStatus{},
+		&models.Currency{},
 	)
 
 	if err != nil {
@@ -82,6 +88,11 @@ func SeedDefaultData(db *gorm.DB) error {
 
 	// Seed default storefront
 	if err := seedDefaultStoreFront(db); err != nil {
+		return err
+	}
+
+	// Seed Order Statuses
+	if err := SeedOrderStatuses(db); err != nil {
 		return err
 	}
 

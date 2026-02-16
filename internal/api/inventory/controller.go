@@ -34,6 +34,24 @@ func (ctrl *Controller) AdjustInventory(c *gin.Context) {
 	utils.WriteResource(c, res)
 }
 
+func (ctrl *Controller) BulkUpdateInventory(c *gin.Context) {
+	var req requests.BulkInventoryUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ValidationErrorResponse(c, err.Error())
+		return
+	}
+
+	// Get admin ID from auth context
+	adminID, exists := c.Get("entity_id")
+	if !exists {
+		utils.ErrorResponse(c, 401, "Unauthorized", nil)
+		return
+	}
+
+	res := ctrl.service.BulkAdjustInventory(req, adminID.(int64))
+	utils.WriteResource(c, res)
+}
+
 func (ctrl *Controller) ListInventoryByStore(c *gin.Context) {
 	storeFrontID, err := strconv.ParseInt(c.Param("storeFrontId"), 10, 64)
 	if err != nil {
@@ -41,8 +59,15 @@ func (ctrl *Controller) ListInventoryByStore(c *gin.Context) {
 		return
 	}
 
+	var req requests.InventoryFilterRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		utils.ValidationErrorResponse(c, "invalid filter parameters")
+		return
+	}
+	req.StoreFrontID = storeFrontID
+
 	pagination := utils.ParsePaginationParams(c)
-	res := ctrl.service.ListInventoryByStore(storeFrontID, pagination)
+	res := ctrl.service.ListInventory(req, pagination)
 	utils.WriteResource(c, res)
 }
 
@@ -71,7 +96,12 @@ func (ctrl *Controller) GetLowStockAlerts(c *gin.Context) {
 	}
 
 	pagination := utils.ParsePaginationParams(c)
-	res := ctrl.service.GetLowStockAlerts(storeFrontID, pagination)
+	low := true
+	req := requests.InventoryFilterRequest{
+		StoreFrontID: storeFrontID,
+		LowStockOnly: &low,
+	}
+	res := ctrl.service.ListInventory(req, pagination)
 	utils.WriteResource(c, res)
 }
 

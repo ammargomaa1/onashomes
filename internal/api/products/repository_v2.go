@@ -37,6 +37,7 @@ type AdminProductV2ListItem struct {
 	MinPrice      *float64  `json:"min_price"`
 	MaxPrice      *float64  `json:"max_price"`
 	CreatedAt     time.Time `json:"created_at"`
+	Name          string    `json:"name"`
 }
 
 type AdminProductV2Detail struct {
@@ -62,6 +63,7 @@ type AdminProductV2Detail struct {
 	SEO                *models.ProductSEO `json:"seo"`
 	CreatedAt          time.Time          `json:"created_at"`
 	UpdatedAt          time.Time          `json:"updated_at"`
+	Name               string             `json:"name"`
 }
 
 type ProductImageInfo struct {
@@ -102,6 +104,9 @@ type AdminVariantV2 struct {
 	CostPrice      *float64 `json:"cost_price"`
 	Barcode        *string  `json:"barcode"`
 	Weight         *float64 `json:"weight"`
+	Length         *float64 `json:"length"`
+	Width          *float64 `json:"width"`
+	Height         *float64 `json:"height"`
 	IsActive       bool     `json:"is_active"`
 }
 
@@ -268,6 +273,7 @@ func (r *V2Repository) GetAdminProductV2ByID(productID int64) (*AdminProductV2De
 		AttributeType:      product.AttributeType,
 		CreatedAt:          product.CreatedAt,
 		UpdatedAt:          product.UpdatedAt,
+		Name:               product.NameEn,
 	}
 
 	// Load brand
@@ -327,6 +333,9 @@ func (r *V2Repository) GetAdminProductV2ByID(productID int64) (*AdminProductV2De
 			CostPrice:      v.CostPrice,
 			Barcode:        v.Barcode,
 			Weight:         v.Weight,
+			Length:         v.Length,
+			Width:          v.Width,
+			Height:         v.Height,
 			IsActive:       v.IsActive,
 		})
 	}
@@ -398,7 +407,9 @@ func (r *V2Repository) ListAdminProductsV2(filter requests.ProductFilterRequest,
 			p.created_at,
 			(SELECT COUNT(*) FROM product_variants pv WHERE pv.product_id = p.id AND pv.deleted_at IS NULL) as variant_count,
 			(SELECT MIN(pv.price) FROM product_variants pv WHERE pv.product_id = p.id AND pv.deleted_at IS NULL) as min_price,
-			(SELECT MAX(pv.price) FROM product_variants pv WHERE pv.product_id = p.id AND pv.deleted_at IS NULL) as max_price
+			(SELECT MIN(pv.price) FROM product_variants pv WHERE pv.product_id = p.id AND pv.deleted_at IS NULL) as min_price,
+			(SELECT MAX(pv.price) FROM product_variants pv WHERE pv.product_id = p.id AND pv.deleted_at IS NULL) as max_price,
+			p.name_en as name
 		`).
 		Order("p.created_at DESC").
 		Offset(offset).Limit(pagination.Limit).
@@ -456,6 +467,28 @@ func (r *V2Repository) UpdateProductStatus(productID int64, status string, isPub
 		"updated_at":   time.Now(),
 	}
 	return r.db.Model(&models.Product{}).Where("id = ?", productID).Updates(updates).Error
+}
+
+func (r *V2Repository) CreateVariantInventory(inventory *models.VariantInventory) error {
+	return r.db.Create(inventory).Error
+}
+
+func (r *V2Repository) GetProductStoreFrontIDs(productID int64) ([]int64, error) {
+	var results []struct {
+		StoreFrontID int64
+	}
+	err := r.db.Table("product_storefront").
+		Select("store_front_id").
+		Where("product_id = ?", productID).
+		Scan(&results).Error
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]int64, len(results))
+	for i, r := range results {
+		ids[i] = r.StoreFrontID
+	}
+	return ids, nil
 }
 
 // ============== Product Images ==============

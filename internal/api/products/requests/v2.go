@@ -2,37 +2,39 @@ package requests
 
 // CreateProductV2Request is the V2 product creation request with bilingual fields and store assignment
 type CreateProductV2Request struct {
-	NameEn             string             `json:"name_en" binding:"required"`
-	NameAr             string             `json:"name_ar" binding:"required"`
-	DescriptionEn      string             `json:"description_en"`
-	DescriptionAr      string             `json:"description_ar"`
-	BrandID            *int64             `json:"brand_id"`
-	CategoryID         *int64             `json:"category_id"`
-	SupplierID         *int64             `json:"supplier_id"`
-	IsInternalSupplier bool               `json:"is_internal_supplier"`
-	AttributeType      *string            `json:"attribute_type"`
-	StoreFrontIDs      []int64            `json:"store_front_ids" binding:"required,min=1"`
-	IsFeatured         bool               `json:"is_featured"`
-	IsNew              bool               `json:"is_new"`
-	SEO                *ProductSEORequest `json:"seo"`
+	NameEn             string                   `json:"name_en" binding:"required"`
+	NameAr             string                   `json:"name_ar" binding:"required"`
+	DescriptionEn      string                   `json:"description_en"`
+	DescriptionAr      string                   `json:"description_ar"`
+	BrandID            *int64                   `json:"brand_id"`
+	CategoryID         *int64                   `json:"category_id"`
+	SupplierID         *int64                   `json:"supplier_id"`
+	IsInternalSupplier bool                     `json:"is_internal_supplier"`
+	AttributeType      *int64                   `json:"attribute_type"`
+	StoreFrontIDs      []int64                  `json:"store_front_ids" binding:"required,min=1"`
+	IsFeatured         bool                     `json:"is_featured"`
+	IsNew              bool                     `json:"is_new"`
+	SEO                *ProductSEORequest       `json:"seo"`
+	Variants           []CreateVariantV2Request `json:"variants"`
 }
 
 // UpdateProductV2Request is the V2 product update request
 type UpdateProductV2Request struct {
-	NameEn             string             `json:"name_en" binding:"required"`
-	NameAr             string             `json:"name_ar" binding:"required"`
-	DescriptionEn      string             `json:"description_en"`
-	DescriptionAr      string             `json:"description_ar"`
-	BrandID            *int64             `json:"brand_id"`
-	CategoryID         *int64             `json:"category_id"`
-	SupplierID         *int64             `json:"supplier_id"`
-	IsInternalSupplier bool               `json:"is_internal_supplier"`
-	AttributeType      *string            `json:"attribute_type"`
-	StoreFrontIDs      []int64            `json:"store_front_ids" binding:"required,min=1"`
-	IsFeatured         bool               `json:"is_featured"`
-	IsNew              bool               `json:"is_new"`
-	IsBestSeller       bool               `json:"is_best_seller"`
-	SEO                *ProductSEORequest `json:"seo"`
+	NameEn             string                   `json:"name_en" binding:"required"`
+	NameAr             string                   `json:"name_ar" binding:"required"`
+	DescriptionEn      string                   `json:"description_en"`
+	DescriptionAr      string                   `json:"description_ar"`
+	BrandID            *int64                   `json:"brand_id"`
+	CategoryID         *int64                   `json:"category_id"`
+	SupplierID         *int64                   `json:"supplier_id"`
+	IsInternalSupplier bool                     `json:"is_internal_supplier"`
+	AttributeType      *int64                   `json:"attribute_type"`
+	StoreFrontIDs      []int64                  `json:"store_front_ids" binding:"required,min=1"`
+	IsFeatured         bool                     `json:"is_featured"`
+	IsNew              bool                     `json:"is_new"`
+	IsBestSeller       bool                     `json:"is_best_seller"`
+	SEO                *ProductSEORequest       `json:"seo"`
+	Variants           []CreateVariantV2Request `json:"variants"`
 }
 
 // ProductSEORequest is the SEO metadata request
@@ -50,6 +52,7 @@ type ProductSEORequest struct {
 
 // CreateVariantV2Request is the V2 variant creation request with pricing
 type CreateVariantV2Request struct {
+	ID             *int64   `json:"id"` // Optional: for updates
 	SKU            string   `json:"sku" binding:"required"`
 	AttributeValue string   `json:"attribute_value"`
 	Price          *float64 `json:"price" binding:"required"`
@@ -57,8 +60,12 @@ type CreateVariantV2Request struct {
 	CostPrice      *float64 `json:"cost_price"`
 	Barcode        string   `json:"barcode"`
 	Weight         *float64 `json:"weight"`
+	Length         *float64 `json:"length"`
+	Width          *float64 `json:"width"`
+	Height         *float64 `json:"height"`
 	IsActive       bool     `json:"is_active"`
 	ImageFileIDs   []int64  `json:"image_file_ids"`
+	Stock          *int     `json:"stock"`
 }
 
 // UpdateProductStatusRequest is the status change request

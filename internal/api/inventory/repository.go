@@ -3,6 +3,7 @@ package inventory
 import (
 	"time"
 
+	"github.com/onas/ecommerce-api/internal/api/inventory/requests"
 	"github.com/onas/ecommerce-api/internal/models"
 	"github.com/onas/ecommerce-api/internal/utils"
 	"gorm.io/gorm"
@@ -76,6 +77,16 @@ func (r *Repository) AdjustInventory(tx *gorm.DB, inventoryID int64, newQuantity
 		}).Error
 }
 
+func (r *Repository) UpdateStock(tx *gorm.DB, inventoryID int64, quantity, reservedQuantity int) error {
+	return tx.Model(&models.VariantInventory{}).
+		Where("id = ?", inventoryID).
+		Updates(map[string]interface{}{
+			"quantity":          quantity,
+			"reserved_quantity": reservedQuantity,
+			"updated_at":        time.Now(),
+		}).Error
+}
+
 func (r *Repository) LockInventory(tx *gorm.DB, inventoryID int64) (*models.VariantInventory, error) {
 	var inv models.VariantInventory
 	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
@@ -91,62 +102,62 @@ func (r *Repository) CreateAdjustment(tx *gorm.DB, adj *models.InventoryAdjustme
 	return tx.Create(adj).Error
 }
 
-func (r *Repository) ListInventoryByStore(storeFrontID int64, pagination *utils.Pagination) ([]VariantInventoryItem, int64, error) {
+func (r *Repository) ListInventory(filter requests.InventoryFilterRequest, pagination *utils.Pagination) ([]VariantInventoryItem, int64, error) {
 	var total int64
-	countQuery := r.db.Table("variant_inventory").Where("store_front_id = ?", storeFrontID)
-	if err := countQuery.Count(&total).Error; err != nil {
+
+	// Base query
+	query := r.db.Table("variant_inventory vi").
+		Joins("JOIN product_variants pv ON pv.id = vi.product_variant_id").
+		Joins("JOIN products p ON p.id = pv.product_id")
+
+	if filter.StoreFrontID > 0 {
+		query = query.Where("vi.store_front_id = ?", filter.StoreFrontID)
+	}
+
+	query = query.Where("pv.deleted_at IS NULL").
+		Where("p.deleted_at IS NULL")
+
+	// Apply filters
+	if filter.BrandID != nil {
+		query = query.Where("p.brand_id = ?", *filter.BrandID)
+	}
+	if filter.CategoryID != nil {
+		query = query.Where("p.category_id = ?", *filter.CategoryID)
+	}
+	if filter.SupplierID != nil {
+		query = query.Where("p.supplier_id = ?", *filter.SupplierID)
+	}
+	if filter.ProductID != nil {
+		query = query.Where("pv.product_id = ?", *filter.ProductID)
+	}
+	if filter.LowStockOnly != nil && *filter.LowStockOnly {
+		query = query.Where("(vi.quantity - vi.reserved_quantity) <= vi.low_stock_threshold")
+	}
+	if filter.Search != nil && *filter.Search != "" {
+		search := "%" + *filter.Search + "%"
+		query = query.Where("(p.name_en ILIKE ? OR p.name_ar ILIKE ? OR pv.sku ILIKE ?)", search, search, search)
+	}
+
+	// Count total
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
+	// Select and Paging
 	var items []VariantInventoryItem
 	offset := (pagination.Page - 1) * pagination.Limit
 
-	err := r.db.Table("variant_inventory vi").
-		Joins("JOIN product_variants pv ON pv.id = vi.product_variant_id").
-		Joins("JOIN products p ON p.id = pv.product_id").
-		Select(`
+	err := query.Select(`
 			vi.id, vi.product_variant_id, vi.store_front_id,
 			vi.quantity, vi.reserved_quantity, vi.low_stock_threshold,
 			(vi.quantity - vi.reserved_quantity) as available_quantity,
 			CASE WHEN (vi.quantity - vi.reserved_quantity) <= vi.low_stock_threshold THEN true ELSE false END as is_low_stock,
 			pv.sku, p.name_en as product_name, pv.attribute_value, pv.price
 		`).
-		Where("vi.store_front_id = ?", storeFrontID).
 		Order("vi.quantity ASC").
 		Offset(offset).Limit(pagination.Limit).
 		Scan(&items).Error
-	if err != nil {
-		return nil, 0, err
-	}
 
-	return items, total, nil
-}
-
-func (r *Repository) GetLowStockItems(storeFrontID int64, pagination *utils.Pagination) ([]VariantInventoryItem, int64, error) {
-	var total int64
-	countQuery := r.db.Table("variant_inventory").
-		Where("store_front_id = ? AND (quantity - reserved_quantity) <= low_stock_threshold", storeFrontID)
-	if err := countQuery.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	var items []VariantInventoryItem
-	offset := (pagination.Page - 1) * pagination.Limit
-
-	err := r.db.Table("variant_inventory vi").
-		Joins("JOIN product_variants pv ON pv.id = vi.product_variant_id").
-		Joins("JOIN products p ON p.id = pv.product_id").
-		Select(`
-			vi.id, vi.product_variant_id, vi.store_front_id,
-			vi.quantity, vi.reserved_quantity, vi.low_stock_threshold,
-			(vi.quantity - vi.reserved_quantity) as available_quantity,
-			true as is_low_stock,
-			pv.sku, p.name_en as product_name, pv.attribute_value, pv.price
-		`).
-		Where("vi.store_front_id = ? AND (vi.quantity - vi.reserved_quantity) <= vi.low_stock_threshold", storeFrontID).
-		Order("vi.quantity ASC").
-		Offset(offset).Limit(pagination.Limit).
-		Scan(&items).Error
 	if err != nil {
 		return nil, 0, err
 	}

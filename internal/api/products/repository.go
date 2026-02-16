@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/onas/ecommerce-api/internal/api/products/requests"
+	"github.com/onas/ecommerce-api/internal/models"
 	"github.com/onas/ecommerce-api/internal/utils"
 	"gorm.io/gorm"
 )
@@ -28,6 +29,9 @@ type Repository interface {
 	CreateVariantAddOn(ctx context.Context, tx *sql.Tx, productID, variantID, addOnProductID int64) (int64, error)
 	UpdateVariantAddOn(ctx context.Context, tx *sql.Tx, productID, variantID, addOnID, addOnProductID int64) error
 	DeleteVariantAddOn(ctx context.Context, tx *sql.Tx, productID, variantID, addOnID int64) error
+	// V2 Methods
+	CreateVariantInventory(inventory *models.VariantInventory) error
+	GetProductStoreFrontIDs(productID int64) ([]int64, error)
 }
 
 type repository struct {
@@ -908,4 +912,28 @@ func (s *pqInt64ArrayScannerType) Scan(src interface{}) error {
 	}
 	*s.dst = res
 	return nil
+}
+
+// ============== V2 Methods Implementation for Interface ==============
+
+func (r *repository) CreateVariantInventory(inventory *models.VariantInventory) error {
+	return r.db.Create(inventory).Error
+}
+
+func (r *repository) GetProductStoreFrontIDs(productID int64) ([]int64, error) {
+	var results []struct {
+		StoreFrontID int64
+	}
+	err := r.db.Table("product_storefront").
+		Select("store_front_id").
+		Where("product_id = ?", productID).
+		Scan(&results).Error
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]int64, len(results))
+	for i, r := range results {
+		ids[i] = r.StoreFrontID
+	}
+	return ids, nil
 }
