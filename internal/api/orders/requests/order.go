@@ -9,10 +9,26 @@ type CreateOrderRequest struct {
 	StoreFrontID int64                    `json:"store_front_id" binding:"required"`
 	Items        []CreateOrderItemRequest `json:"items" binding:"required,min=1,dive"`
 
-	// New Customer Fields
+	// Customer Info
+	CustomerID    *int64 `json:"customer_id"` // Optional
 	CustomerName  string `json:"customer_name"`
 	CustomerEmail string `json:"customer_email"`
 	CustomerPhone string `json:"customer_phone"`
+
+	// Address Info
+	// Address Info (Optional at creation, validated in logic if needed)
+	CountryID      *int64 `json:"country_id"`
+	GovernorateID  *int64 `json:"governorate_id"`
+	CityID         *int64 `json:"city_id"`
+	Street         string `json:"street"`
+	BuildingNumber string `json:"building_number"`
+	Floor          string `json:"floor"`
+	Apartment      string `json:"apartment"`
+	SpecialMark    string `json:"special_mark"`
+
+	PaymentMethodID *int64 `json:"payment_method_id"`
+	OrderSourceID   *int64 `json:"order_source_id"`
+	DiscountCode    string `json:"discount_code"`
 
 	ShippingAmount float64 `json:"shipping_amount" binding:"min=0"`
 	TaxAmount      float64 `json:"tax_amount" binding:"min=0"`

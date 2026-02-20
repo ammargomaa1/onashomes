@@ -35,19 +35,33 @@ func (r *Repository) CreateOrderItems(tx *gorm.DB, items []models.OrderItem) err
 // GetOrderByID retrieves an order with preloaded items and storefront
 func (r *Repository) GetOrderByID(id int64) (*models.Order, error) {
 	var order models.Order
-	err := r.db.Preload("Items").Preload("StoreFront").
+	err := r.db.Preload("Items").Preload("Items.ProductVariant").Preload("StoreFront").
 		Preload("OrderStatus").Preload("PaymentStatus").Preload("FulfillmentStatus").Preload("Currency").
+		Preload("PaymentMethod").Preload("OrderSource").
 		Preload("CreatedBy").
+		Preload("Address").
+		Preload("Address.Country").Preload("Address.Governorate").Preload("Address.City").
 		First(&order, id).Error
 	if err != nil {
 		return nil, err
 	}
+
 	return &order, nil
 }
 
 // UpdateStatus updates the order status ID
 func (r *Repository) UpdateStatus(tx *gorm.DB, id int64, statusID int64) error {
 	return tx.Model(&models.Order{}).Where("id = ?", id).Update("order_status_id", statusID).Error
+}
+
+// UpdatePaymentStatus updates the payment status ID
+func (r *Repository) UpdatePaymentStatus(tx *gorm.DB, id int64, statusID int64) error {
+	return tx.Model(&models.Order{}).Where("id = ?", id).Update("payment_status_id", statusID).Error
+}
+
+// UpdateFulfillmentStatus updates the fulfillment status ID
+func (r *Repository) UpdateFulfillmentStatus(tx *gorm.DB, id int64, statusID int64) error {
+	return tx.Model(&models.Order{}).Where("id = ?", id).Update("fulfillment_status_id", statusID).Error
 }
 
 // Helper methods to get status IDs
@@ -80,79 +94,76 @@ func (r *Repository) ListOrders(filter requests.OrderFilterRequest, pagination *
 	var orders []models.Order
 	var total int64
 
-	query := r.db.Model(&models.Order{}).
-		Preload("StoreFront").
-		Preload("OrderStatus").Preload("PaymentStatus").Preload("FulfillmentStatus").Preload("Currency").
-		Preload("CreatedBy")
-
-	// Filtering
-	if filter.StoreFrontID > 0 {
-		query = query.Where("orders.store_front_id = ?", filter.StoreFrontID)
-	}
-
-	if filter.Status != "" {
-		// Join order_statuses to filter by slug.
-		query = query.Joins("JOIN order_statuses ON orders.order_status_id = order_statuses.id").
-			Where("order_statuses.slug = ?", filter.Status)
-	}
-
-	if filter.PaymentStatus != "" {
-		query = query.Joins("JOIN payment_statuses ON orders.payment_status_id = payment_statuses.id").
-			Where("payment_statuses.slug = ?", filter.PaymentStatus)
-	}
-
-	if filter.ProductIDs != "" {
-		ids := strings.Split(filter.ProductIDs, ",")
-		if len(ids) > 0 {
-			query = query.Joins("JOIN order_items ON orders.id = order_items.order_id").
-				Where("order_items.product_id IN ?", ids).
-				Group("orders.id")
+	// Helper to apply shared filter conditions
+	applyFilters := func(q *gorm.DB) *gorm.DB {
+		if filter.StoreFrontID > 0 {
+			q = q.Where("orders.store_front_id = ?", filter.StoreFrontID)
 		}
+		if filter.Status != "" {
+			q = q.Joins("JOIN order_statuses ON orders.order_status_id = order_statuses.id").
+				Where("order_statuses.slug = ?", filter.Status)
+		}
+		if filter.PaymentStatus != "" {
+			q = q.Joins("JOIN payment_statuses ON orders.payment_status_id = payment_statuses.id").
+				Where("payment_statuses.slug = ?", filter.PaymentStatus)
+		}
+		if filter.ProductIDs != "" {
+			ids := strings.Split(filter.ProductIDs, ",")
+			if len(ids) > 0 {
+				q = q.Joins("JOIN order_items ON orders.id = order_items.order_id").
+					Where("order_items.product_id IN ?", ids).
+					Group("orders.id")
+			}
+		}
+		if filter.DateFrom != "" {
+			q = q.Where("orders.created_at >= ?", filter.DateFrom)
+		}
+		if filter.DateTo != "" {
+			q = q.Where("orders.created_at <= ?", filter.DateTo)
+		}
+		if filter.Search != "" {
+			search := "%" + strings.ToLower(filter.Search) + "%"
+			q = q.Where(
+				r.db.Where("LOWER(orders.order_number) LIKE ?", search).
+					Or("LOWER(orders.customer_name) LIKE ?", search).
+					Or("orders.customer_phone LIKE ?", search),
+			)
+		}
+		return q
 	}
 
-	if filter.DateFrom != "" {
-		query = query.Where("orders.created_at >= ?", filter.DateFrom)
-	}
-	if filter.DateTo != "" {
-		query = query.Where("orders.created_at <= ?", filter.DateTo)
-	}
-	if filter.Search != "" {
-		search := "%" + strings.ToLower(filter.Search) + "%"
-		// Search in Order Number, Customer Name, Customer Phone
-		query = query.Where(
-			r.db.Where("LOWER(orders.order_number) LIKE ?", search).
-				Or("LOWER(orders.customer_name) LIKE ?", search).
-				Or("orders.customer_phone LIKE ?", search),
-		)
-	}
-
-	// Count total
-	// Note: When using Group, Count behaves differently (counts groups).
-	// To get total count of orders matching criteria, we might need a subquery or careful counting.
-	// For simplicity, if Group is used, we count the results.
-	// GORM's Count method with Group might be tricky.
-	// A common workaround is counting distinct IDs.
+	// Count query (separate DB session)
+	countQuery := applyFilters(r.db.Model(&models.Order{}))
 	if filter.ProductIDs != "" {
-		if err := query.Distinct("orders.id").Count(&total).Error; err != nil {
+		if err := countQuery.Distinct("orders.id").Count(&total).Error; err != nil {
 			return nil, 0, err
 		}
 	} else {
-		if err := query.Count(&total).Error; err != nil {
+		if err := countQuery.Count(&total).Error; err != nil {
 			return nil, 0, err
 		}
 	}
+
+	// Data query (fresh DB session with preloads)
+	dataQuery := applyFilters(r.db.Model(&models.Order{})).
+		Preload("StoreFront").
+		Preload("OrderStatus").Preload("PaymentStatus").Preload("FulfillmentStatus").Preload("Currency").
+		Preload("PaymentMethod").Preload("OrderSource").
+		Preload("CreatedBy").
+		Preload("Address").
+		Preload("Address.City")
 
 	// Pagination & Sorting
 	offset := (pagination.Page - 1) * pagination.Limit
-	query = query.Offset(offset).Limit(pagination.Limit)
+	dataQuery = dataQuery.Offset(offset).Limit(pagination.Limit)
 
 	if pagination.Sort != "" {
-		query = query.Order(fmt.Sprintf("orders.%s %s", pagination.Sort, pagination.Order))
+		dataQuery = dataQuery.Order(fmt.Sprintf("orders.%s %s", pagination.Sort, pagination.Order))
 	} else {
-		query = query.Order("orders.created_at DESC")
+		dataQuery = dataQuery.Order("orders.created_at DESC")
 	}
 
-	if err := query.Find(&orders).Error; err != nil {
+	if err := dataQuery.Find(&orders).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -185,4 +196,17 @@ func (r *Repository) ListCurrencies() ([]models.Currency, error) {
 	var currencies []models.Currency
 	err := r.db.Find(&currencies).Error
 	return currencies, err
+}
+
+// ListPaymentMethods retrieves all payment methods
+func (r *Repository) ListPaymentMethods() ([]models.PaymentMethod, error) {
+	var methods []models.PaymentMethod
+	err := r.db.Where("is_active = ?", true).Find(&methods).Error
+	return methods, err
+}
+
+func (r *Repository) GetPaymentMethodByID(id int64) (*models.PaymentMethod, error) {
+	var method models.PaymentMethod
+	err := r.db.First(&method, id).Error
+	return &method, err
 }

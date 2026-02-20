@@ -11,19 +11,24 @@ import (
 	"github.com/onas/ecommerce-api/internal/api/attributes"
 	"github.com/onas/ecommerce-api/internal/api/brand"
 	"github.com/onas/ecommerce-api/internal/api/categories"
+	"github.com/onas/ecommerce-api/internal/api/customers"
+	"github.com/onas/ecommerce-api/internal/api/dashboard"
 	"github.com/onas/ecommerce-api/internal/api/files"
 	"github.com/onas/ecommerce-api/internal/api/inventory"
+	"github.com/onas/ecommerce-api/internal/api/locations"
 	"github.com/onas/ecommerce-api/internal/api/orders"
 	"github.com/onas/ecommerce-api/internal/api/products"
 	"github.com/onas/ecommerce-api/internal/api/sections"
-	"github.com/onas/ecommerce-api/internal/api/storeassignment"
+	"github.com/onas/ecommerce-api/internal/api/stats"
 	"github.com/onas/ecommerce-api/internal/api/storefronts"
 	"github.com/onas/ecommerce-api/internal/api/suppliers"
 	"github.com/onas/ecommerce-api/internal/api/users"
 	"github.com/onas/ecommerce-api/internal/database"
 	"github.com/onas/ecommerce-api/internal/middleware"
+	"github.com/onas/ecommerce-api/internal/models"
 	"github.com/onas/ecommerce-api/internal/permissions"
 	"github.com/onas/ecommerce-api/internal/services"
+	"gorm.io/gorm"
 )
 
 func main() {
@@ -153,24 +158,37 @@ func main() {
 		invController := inventory.NewController(invService)
 		inventory.RegisterRoutes(api, invController)
 
-		// Orders module (Priority 1)
-		orderRepo := orders.NewRepository(db)
-		orderService := orders.NewService(db, orderRepo, invService)
-		orderController := orders.NewController(orderService)
-		orders.RegisterRoutes(api, orderController)
-
-		// Products V2 module (Phase 2)
+		// Products Phase 2 (V2)
 		productV2Repo := products.NewV2Repository(db)
 		productV2Service := products.NewServiceV2(db, productV2Repo, invRepo)
 		productV2Controller := products.NewControllerV2(productV2Service)
 		products.RegisterV2Routes(api, productV2Controller)
 
-		// Store Assignment routes (Phase 2 - M2M assignments)
-		saHandler := storeassignment.NewHandler(db)
-		saHandler.RegisterEntityStoreRoutes(api, api, "brands", "brand_storefront", "brand_id", "brands.update")
-		saHandler.RegisterEntityStoreRoutes(api, api, "categories", "category_storefront", "category_id", "categories.update")
-		saHandler.RegisterEntityStoreRoutes(api, api, "sections", "section_storefront", "section_id", "sections.update")
-		saHandler.RegisterEntityStoreRoutes(api, api, "suppliers", "supplier_storefront", "supplier_id", "suppliers.update")
+		// Customers module
+		customerRepo := customers.NewRepository(db)
+		customerService := customers.NewService(customerRepo)
+		customerController := customers.NewController(customerService)
+		customers.RegisterRoutes(api, customerController)
+
+		// Location module
+		locationRepo := locations.NewRepository(db)
+		locationService := locations.NewService(locationRepo)
+		locationController := locations.NewController(locationService)
+		locations.RegisterRoutes(api, locationController)
+
+		// Orders module (Priority 1)
+		orderRepo := orders.NewRepository(db)
+		orderService := orders.NewService(db, orderRepo, invService, customerService)
+		orderController := orders.NewController(orderService)
+		orders.RegisterRoutes(api, orderController)
+
+		// Stats module
+		statsHandler := stats.NewHandler(db)
+		stats.RegisterRoutes(api, statsHandler)
+
+		// Dashboard module
+		dashboardHandler := dashboard.NewHandler(db)
+		dashboard.RegisterRoutes(api, dashboardHandler)
 	}
 
 	// Scan routes and sync permissions to database
@@ -179,6 +197,11 @@ func main() {
 	if err := permissionScanner.ScanAndSync(router); err != nil {
 		log.Printf("⚠️  Failed to scan and sync permissions: %v", err)
 	}
+
+	// Run permission fixes (dev only)
+	// if err := fixPermissions(db); err != nil {
+	// 	log.Printf("⚠️  Permission fix warning: %v", err)
+	// }
 
 	// Start server
 	addr := fmt.Sprintf(":%s", cfg.Server.Port)
@@ -189,6 +212,41 @@ func main() {
 	if err := router.Run(addr); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
+}
+
+func fixPermissions(db *gorm.DB) error {
+	log.Println("🔧 Running permission fix diagnostics...")
+
+	// using models.Permission to avoid "model value required" and ensure correct table usage
+	var perm models.Permission
+	// Find or Create permission
+	if err := db.Where(models.Permission{Name: "orders.edit"}).
+		Attrs(models.Permission{Description: "Edit orders"}).
+		FirstOrCreate(&perm).Error; err != nil {
+		log.Printf("⚠️  Failed to fix permissions: %v", err)
+		return nil // Don't crash app, just log
+	}
+
+	log.Printf("Permission orders.edit ready (ID: %d)", perm.ID)
+
+	// Insert linkage for Role 1 and Role 2
+	roles := []int64{1, 2}
+	for _, roleID := range roles {
+		var count int64
+		db.Table("role_permissions").Where("role_id = ? AND permission_id = ?", roleID, perm.ID).Count(&count)
+		if count == 0 {
+			log.Printf("Assigning orders.edit (ID: %d) to Role %d...", perm.ID, roleID)
+			if err := db.Exec("INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)", roleID, perm.ID).Error; err != nil {
+				log.Printf("Failed to assign permission to Role %d: %v", roleID, err)
+			} else {
+				log.Printf("✅ Assigned orders.edit to Role %d", roleID)
+			}
+		} else {
+			log.Printf("✅ Role %d already has orders.edit (ID: %d)", roleID, perm.ID)
+		}
+	}
+
+	return nil
 }
 
 // runMigrationsOnly runs only the SQL migrations without starting the server

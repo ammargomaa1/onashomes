@@ -21,6 +21,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.File{},
 		&models.Section{},
 		&models.Category{},
+		&models.Customer{},
 		// Phase 2 models
 		&models.StoreFront{},
 		&models.ProductSEO{},
@@ -33,6 +34,13 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.PaymentStatus{},
 		&models.FulfillmentStatus{},
 		&models.Currency{},
+		// Location Models
+		&models.Country{},
+		&models.Governorate{},
+		&models.City{},
+		&models.OrderAddress{},
+		&models.PaymentMethod{},
+		&models.OrderSource{},
 	)
 
 	if err != nil {
@@ -56,7 +64,13 @@ func SeedDefaultData(db *gorm.DB) error {
 		if err := ensureDefaultAdmin(db); err != nil {
 			return err
 		}
-		return seedDefaultStoreFront(db)
+		if err := seedDefaultStoreFront(db); err != nil {
+			return err
+		}
+		if err := SeedOrderStatuses(db); err != nil {
+			return err
+		}
+		return SeedOrderSources(db)
 	}
 
 	// Create Super Admin role (permissions will be assigned by scanner)
@@ -132,6 +146,22 @@ func ensureDefaultAdmin(db *gorm.DB) error {
 
 	if adminCount > 0 {
 		fmt.Println("✓ Default admin already exists")
+		// Check for super admin even if admin exists
+		var superAdminCount int64
+		db.Model(&models.Admin{}).Where("email = ?", "superadmin@onas.com").Count(&superAdminCount)
+		if superAdminCount == 0 {
+			hashedPassword, _ := utils.HashPassword("password")
+			superAdmin := models.Admin{
+				Email:     "superadmin@onas.com",
+				Password:  hashedPassword,
+				FirstName: "Super",
+				LastName:  "Admin",
+				RoleID:    1, // Super Admin
+				IsActive:  true,
+			}
+			_ = db.Create(&superAdmin).Error
+			fmt.Println("✓ Default super admin created: superadmin@onas.com / password")
+		}
 		return nil
 	}
 
@@ -151,18 +181,29 @@ func createDefaultAdmin(db *gorm.DB, roleID int64) error {
 		return fmt.Errorf("failed to hash password: %v", err)
 	}
 
-	admin := models.Admin{
+	// Create Admin User
+	adminUser := models.Admin{
 		Email:     "admin@onas.com",
 		Password:  hashedPassword,
 		FirstName: "Admin",
-		LastName:  "Admin",
-		RoleID:    roleID,
+		LastName:  "User",
+		RoleID:    roleID, // Back to regular admin
 		IsActive:  true,
 	}
 
-	if err := db.Create(&admin).Error; err != nil {
-		return fmt.Errorf("failed to create admin: %v", err)
+	// Ignore error if exists
+	_ = db.Create(&adminUser).Error
+
+	// Create Super Admin User
+	superAdmin := models.Admin{
+		Email:     "superadmin@onas.com",
+		Password:  hashedPassword,
+		FirstName: "Super",
+		LastName:  "Admin",
+		RoleID:    1, // Super Admin
+		IsActive:  true,
 	}
+	_ = db.Create(&superAdmin).Error
 
 	fmt.Println("✓ Default admin user created: admin@onas.com / password")
 	return nil

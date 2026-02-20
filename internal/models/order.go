@@ -42,12 +42,15 @@ type Order struct {
 	OrderNumber  string `json:"order_number" gorm:"uniqueIndex;not null;size:64"`
 
 	// Foreign Keys for Statuses
-	OrderStatusID       int64 `json:"order_status_id" gorm:"index;not null;default:1"`
-	PaymentStatusID     int64 `json:"payment_status_id" gorm:"index;not null;default:1"`
-	FulfillmentStatusID int64 `json:"fulfillment_status_id" gorm:"index;not null;default:1"`
-	CurrencyID          int64 `json:"currency_id" gorm:"index;not null;default:1"`
+	OrderStatusID       int64  `json:"order_status_id" gorm:"index;not null;default:1"`
+	PaymentStatusID     int64  `json:"payment_status_id" gorm:"index;not null;default:1"`
+	PaymentMethodID     *int64 `json:"payment_method_id" gorm:"index"` // Nullable
+	OrderSourceID       *int64 `json:"order_source_id" gorm:"index"`   // Nullable FK to OrderSources
+	FulfillmentStatusID int64  `json:"fulfillment_status_id" gorm:"index;not null;default:1"`
+	CurrencyID          int64  `json:"currency_id" gorm:"index;not null;default:1"`
 
 	// Customer Info
+	CustomerID    *int64 `json:"customer_id,omitempty" gorm:"index"` // Nullable FK to Customers
 	CustomerName  string `json:"customer_name" gorm:"size:255"`
 	CustomerEmail string `json:"customer_email" gorm:"size:255;index"`
 	CustomerPhone string `json:"customer_phone" gorm:"size:50;index"`
@@ -69,9 +72,13 @@ type Order struct {
 	StoreFront        *StoreFront        `json:"store_front,omitempty" gorm:"foreignKey:StoreFrontID"`
 	OrderStatus       *OrderStatus       `json:"order_status,omitempty" gorm:"foreignKey:OrderStatusID"`
 	PaymentStatus     *PaymentStatus     `json:"payment_status,omitempty" gorm:"foreignKey:PaymentStatusID"`
+	PaymentMethod     *PaymentMethod     `json:"payment_method,omitempty" gorm:"foreignKey:PaymentMethodID"`
+	OrderSource       *OrderSource       `json:"order_source,omitempty" gorm:"foreignKey:OrderSourceID"`
 	FulfillmentStatus *FulfillmentStatus `json:"fulfillment_status,omitempty" gorm:"foreignKey:FulfillmentStatusID"`
 	Currency          *Currency          `json:"currency,omitempty" gorm:"foreignKey:CurrencyID"`
 	CreatedBy         *Admin             `json:"created_by,omitempty" gorm:"foreignKey:CreatedByID"`
+	Customer          *Customer          `json:"customer,omitempty" gorm:"foreignKey:CustomerID"`
+	Address           *OrderAddress      `json:"address,omitempty" gorm:"foreignKey:OrderID"`
 }
 
 type OrderItem struct {

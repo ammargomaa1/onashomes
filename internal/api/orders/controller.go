@@ -76,6 +76,30 @@ func (c *Controller) CancelOrder(ctx *gin.Context) {
 	utils.WriteResource(ctx, res)
 }
 
+func (c *Controller) MarkOutForDelivery(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		utils.ValidationErrorResponse(ctx, "invalid order id")
+		return
+	}
+
+	res := c.service.MarkOutForDelivery(id)
+	utils.WriteResource(ctx, res)
+}
+
+func (c *Controller) CompleteOrder(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		utils.ValidationErrorResponse(ctx, "invalid order id")
+		return
+	}
+
+	res := c.service.CompleteOrder(id)
+	utils.WriteResource(ctx, res)
+}
+
 func (c *Controller) ListOrders(ctx *gin.Context) {
 	var filter requests.OrderFilterRequest
 	if err := ctx.ShouldBindQuery(&filter); err != nil {

@@ -154,7 +154,7 @@ func (r *Repository) ListInventory(filter requests.InventoryFilterRequest, pagin
 			CASE WHEN (vi.quantity - vi.reserved_quantity) <= vi.low_stock_threshold THEN true ELSE false END as is_low_stock,
 			pv.sku, p.name_en as product_name, pv.attribute_value, pv.price
 		`).
-		Order("vi.quantity ASC").
+		Order("(vi.quantity - vi.reserved_quantity) ASC").
 		Offset(offset).Limit(pagination.Limit).
 		Scan(&items).Error
 
@@ -189,7 +189,7 @@ func (r *Repository) HasInventoryForProduct(productID int64) (bool, error) {
 	var count int64
 	err := r.db.Table("variant_inventory vi").
 		Joins("JOIN product_variants pv ON pv.id = vi.product_variant_id").
-		Where("pv.product_id = ? AND vi.quantity > 0 AND pv.deleted_at IS NULL", productID).
+		Where("pv.product_id = ? AND (vi.quantity - vi.reserved_quantity) > 0 AND pv.deleted_at IS NULL", productID).
 		Count(&count).Error
 	if err != nil {
 		return false, err

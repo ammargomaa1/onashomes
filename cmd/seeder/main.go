@@ -6,6 +6,7 @@ import (
 	"github.com/onas/ecommerce-api/config"
 	"github.com/onas/ecommerce-api/internal/database"
 	"github.com/onas/ecommerce-api/internal/models"
+	"github.com/onas/ecommerce-api/internal/utils"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -22,6 +23,13 @@ func main() {
 		&models.PaymentStatus{},
 		&models.FulfillmentStatus{},
 		&models.Order{}, // Also migrate Order to update columns
+		&models.Role{},
+		&models.Admin{},
+		// Location Models
+		&models.Country{},
+		&models.Governorate{},
+		&models.City{},
+		&models.OrderAddress{},
 	)
 
 	log.Println("Seeding Database...")
@@ -30,6 +38,9 @@ func main() {
 	seedOrderStatuses(db)
 	seedPaymentStatuses(db)
 	seedFulfillmentStatuses(db)
+	seedRoles(db)
+	seedAdmin(db)
+	seedLocations(db)
 
 	log.Println("Database Seeded Successfully!")
 }
@@ -114,5 +125,46 @@ func seedFulfillmentStatuses(db *gorm.DB) {
 		}).Create(&status).Error; err != nil {
 			log.Printf("Failed to seed fulfillment status %s: %v", status.Slug, err)
 		}
+	}
+}
+
+func seedRoles(db *gorm.DB) {
+	roles := []models.Role{
+		{Name: "Super Admin", Description: "Full access to all resources"},
+		{Name: "Admin", Description: "Standard admin access"},
+	}
+
+	for _, role := range roles {
+		if err := db.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "name"}},
+			DoUpdates: clause.AssignmentColumns([]string{"description"}),
+		}).Create(&role).Error; err != nil {
+			log.Printf("Failed to seed role %s: %v", role.Name, err)
+		}
+	}
+}
+
+func seedAdmin(db *gorm.DB) {
+	var role models.Role
+	if err := db.Where("name = ?", "Super Admin").First(&role).Error; err != nil {
+		log.Printf("Failed to find Super Admin role: %v", err)
+		return
+	}
+
+	hp, _ := utils.HashPassword("admin123")
+	admin := models.Admin{
+		Email:     "admin@onashomes.com",
+		Password:  hp,
+		FirstName: "Super",
+		LastName:  "Admin",
+		RoleID:    role.ID,
+		IsActive:  true,
+	}
+
+	if err := db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "email"}},
+		DoUpdates: clause.AssignmentColumns([]string{"password", "first_name", "last_name", "role_id", "is_active"}),
+	}).Create(&admin).Error; err != nil {
+		log.Printf("Failed to seed admin user: %v", err)
 	}
 }

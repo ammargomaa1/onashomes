@@ -15,8 +15,6 @@ func SeedOrderStatuses(db *gorm.DB) error {
 	// 1. Order Statuses
 	orderStatuses := []models.OrderStatus{
 		{NameEn: "Draft", NameAr: "مسودة", Slug: "draft"},
-		{NameEn: "Pending Payment", NameAr: "بانتظار الدفع", Slug: "pending_payment"},
-		{NameEn: "Paid", NameAr: "مدفوع", Slug: "paid"},
 		{NameEn: "Confirmed", NameAr: "مؤكد", Slug: "confirmed"},
 		{NameEn: "Fulfilled", NameAr: "تم التجهيز", Slug: "fulfilled"},
 		{NameEn: "Completed", NameAr: "مكتمل", Slug: "completed"},
@@ -50,6 +48,7 @@ func SeedOrderStatuses(db *gorm.DB) error {
 	fulfillmentStatuses := []models.FulfillmentStatus{
 		{NameEn: "Unfulfilled", NameAr: "غير مجهز", Slug: "unfulfilled"},
 		{NameEn: "Partially Fulfilled", NameAr: "مجهز جزئياً", Slug: "partially_fulfilled"},
+		{NameEn: "Out for Delivery", NameAr: "في الطريق للتسليم", Slug: "out_for_delivery"},
 		{NameEn: "Fulfilled", NameAr: "تم التجهيز", Slug: "fulfilled"},
 	}
 
@@ -72,6 +71,19 @@ func SeedOrderStatuses(db *gorm.DB) error {
 		}
 	}
 
-	log.Println("✓ Order statuses, payment statuses, fulfillment statuses, and currencies seeded successfully")
+	// 5. Payment Methods
+	paymentMethods := []models.PaymentMethod{
+		{NameEn: "Cash on Delivery", NameAr: "الدفع عند الاستلام", Slug: "cod", IsActive: true},
+		{NameEn: "InstaPay", NameAr: "انستا باي", Slug: "instapay", IsActive: true},
+		{NameEn: "Phone Wallet", NameAr: "محفظة الهاتف", Slug: "wallet", IsActive: true},
+	}
+
+	for _, method := range paymentMethods {
+		if err := db.Where("slug = ?", method.Slug).FirstOrCreate(&method).Error; err != nil {
+			return fmt.Errorf("failed to seed payment method %s: %w", method.Slug, err)
+		}
+	}
+
+	log.Println("✓ Order statuses, payment statuses, fulfillment statuses, currencies, and payment methods seeded successfully")
 	return nil
 }
