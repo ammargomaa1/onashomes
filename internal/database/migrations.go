@@ -19,6 +19,28 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.User{},
 		&models.Admin{},
 		&models.File{},
+		&models.Section{},
+		&models.Category{},
+		&models.Customer{},
+		// Phase 2 models
+		&models.StoreFront{},
+		&models.ProductSEO{},
+		&models.ProductImage{},
+		&models.VariantInventory{},
+		&models.InventoryAdjustment{},
+		&models.Order{},
+		&models.OrderItem{},
+		&models.OrderStatus{},
+		&models.PaymentStatus{},
+		&models.FulfillmentStatus{},
+		&models.Currency{},
+		// Location Models
+		&models.Country{},
+		&models.Governorate{},
+		&models.City{},
+		&models.OrderAddress{},
+		&models.PaymentMethod{},
+		&models.OrderSource{},
 	)
 
 	if err != nil {
@@ -39,7 +61,16 @@ func SeedDefaultData(db *gorm.DB) error {
 	db.Model(&models.Role{}).Count(&roleCount)
 	if roleCount > 0 {
 		fmt.Println("✓ Roles already exist, skipping role creation...")
-		return ensureDefaultAdmin(db)
+		if err := ensureDefaultAdmin(db); err != nil {
+			return err
+		}
+		if err := seedDefaultStoreFront(db); err != nil {
+			return err
+		}
+		if err := SeedOrderStatuses(db); err != nil {
+			return err
+		}
+		return SeedOrderSources(db)
 	}
 
 	// Create Super Admin role (permissions will be assigned by scanner)
@@ -68,6 +99,43 @@ func SeedDefaultData(db *gorm.DB) error {
 	}
 
 	fmt.Println("✓ Default roles and admin user created successfully")
+
+	// Seed default storefront
+	if err := seedDefaultStoreFront(db); err != nil {
+		return err
+	}
+
+	// Seed Order Statuses
+	if err := SeedOrderStatuses(db); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// seedDefaultStoreFront creates a default store front if none exist
+func seedDefaultStoreFront(db *gorm.DB) error {
+	var count int64
+	db.Model(&models.StoreFront{}).Count(&count)
+	if count > 0 {
+		fmt.Println("✓ Store fronts already exist, skipping...")
+		return nil
+	}
+
+	sf := models.StoreFront{
+		Name:            "Onas Homes",
+		Slug:            "onas-homes",
+		Domain:          "localhost",
+		Currency:        "SAR",
+		DefaultLanguage: "ar",
+		IsActive:        true,
+	}
+
+	if err := db.Create(&sf).Error; err != nil {
+		return fmt.Errorf("failed to create default store front: %v", err)
+	}
+
+	fmt.Println("✓ Default store front created: Onas Homes (localhost)")
 	return nil
 }
 
@@ -75,9 +143,25 @@ func SeedDefaultData(db *gorm.DB) error {
 func ensureDefaultAdmin(db *gorm.DB) error {
 	var adminCount int64
 	db.Model(&models.Admin{}).Where("email = ?", "admin@onas.com").Count(&adminCount)
-	
+
 	if adminCount > 0 {
 		fmt.Println("✓ Default admin already exists")
+		// Check for super admin even if admin exists
+		var superAdminCount int64
+		db.Model(&models.Admin{}).Where("email = ?", "superadmin@onas.com").Count(&superAdminCount)
+		if superAdminCount == 0 {
+			hashedPassword, _ := utils.HashPassword("password")
+			superAdmin := models.Admin{
+				Email:     "superadmin@onas.com",
+				Password:  hashedPassword,
+				FirstName: "Super",
+				LastName:  "Admin",
+				RoleID:    1, // Super Admin
+				IsActive:  true,
+			}
+			_ = db.Create(&superAdmin).Error
+			fmt.Println("✓ Default super admin created: superadmin@onas.com / password")
+		}
 		return nil
 	}
 
@@ -97,18 +181,29 @@ func createDefaultAdmin(db *gorm.DB, roleID int64) error {
 		return fmt.Errorf("failed to hash password: %v", err)
 	}
 
-	admin := models.Admin{
+	// Create Admin User
+	adminUser := models.Admin{
 		Email:     "admin@onas.com",
 		Password:  hashedPassword,
 		FirstName: "Admin",
-		LastName:  "Admin",
-		RoleID:    roleID,
+		LastName:  "User",
+		RoleID:    roleID, // Back to regular admin
 		IsActive:  true,
 	}
 
-	if err := db.Create(&admin).Error; err != nil {
-		return fmt.Errorf("failed to create admin: %v", err)
+	// Ignore error if exists
+	_ = db.Create(&adminUser).Error
+
+	// Create Super Admin User
+	superAdmin := models.Admin{
+		Email:     "superadmin@onas.com",
+		Password:  hashedPassword,
+		FirstName: "Super",
+		LastName:  "Admin",
+		RoleID:    1, // Super Admin
+		IsActive:  true,
 	}
+	_ = db.Create(&superAdmin).Error
 
 	fmt.Println("✓ Default admin user created: admin@onas.com / password")
 	return nil

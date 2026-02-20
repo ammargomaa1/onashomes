@@ -15,9 +15,12 @@ func RegisterRoutes(router *gin.RouterGroup, service Service) {
 	{
 		adminRoutes.POST("", middleware.RequirePermission("suppliers.create"), handler.Create)
 		adminRoutes.PUT("/:id", middleware.RequirePermission("suppliers.update"), handler.Update)
-		adminRoutes.GET("",middleware.RequirePermission("suppliers.view"), handler.List)
+		adminRoutes.GET("", middleware.RequirePermission("suppliers.view"), handler.List)
 		adminRoutes.GET("/:id", middleware.RequirePermission("suppliers.view"), handler.GetByID)
 		adminRoutes.PUT("/:id/activate", middleware.RequirePermission("suppliers.update"), handler.Activate)
 		adminRoutes.PUT("/:id/deactivate", middleware.RequirePermission("suppliers.update"), handler.Deactivate)
 	}
+
+	// Dropdown endpoint (admin auth, no permission check)
+	adminRoutes.GET("/dropdown", handler.ListForDropdown)
 }

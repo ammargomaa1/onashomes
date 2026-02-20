@@ -21,33 +21,28 @@ func NewController(fileService *services.FileService) *Controller {
 	}
 }
 
-// UploadRequest represents file upload request
-type UploadRequest struct {
-	MaxFileSize int64 `json:"max_file_size,omitempty"`
-}
-
 // UploadResponse represents file upload response
 type UploadResponse struct {
-	Success bool                `json:"success"`
-	Message string              `json:"message"`
-	File    *FileResponse       `json:"file,omitempty"`
+	Success bool          `json:"success"`
+	Message string        `json:"message"`
+	File    *FileResponse `json:"file,omitempty"`
 }
 
 // FileResponse represents file data in API responses
 type FileResponse struct {
-	ID           int64  `json:"id"`
-	OriginalName string `json:"original_name"`
-	FileName     string `json:"file_name"`
-	FilePath     string `json:"file_path"`
-	FileSize     int64  `json:"file_size"`
-	MimeType     string `json:"mime_type"`
-	FileType     string `json:"file_type"`
-	Extension    string `json:"extension"`
-	UploadedBy   int64  `json:"uploaded_by"`
+	ID              int64      `json:"id"`
+	OriginalName    string     `json:"original_name"`
+	FileName        string     `json:"file_name"`
+	FilePath        string     `json:"file_path"`
+	FileSize        int64      `json:"file_size"`
+	MimeType        string     `json:"mime_type"`
+	FileType        string     `json:"file_type"`
+	Extension       string     `json:"extension"`
+	UploadedBy      int64      `json:"uploaded_by"`
 	UploadedByAdmin *AdminInfo `json:"uploaded_by_admin,omitempty"`
-	IsActive     bool   `json:"is_active"`
-	CreatedAt    string `json:"created_at"`
-	UpdatedAt    string `json:"updated_at"`
+	IsActive        bool       `json:"is_active"`
+	CreatedAt       string     `json:"created_at"`
+	UpdatedAt       string     `json:"updated_at"`
 }
 
 // AdminInfo represents basic admin info in responses
@@ -101,7 +96,7 @@ func (c *Controller) Upload(ctx *gin.Context) {
 
 	// Get custom config if provided
 	config := c.fileService.GetDefaultConfig()
-	
+
 	// Check for custom max file size in form data
 	if maxSizeStr := ctx.PostForm("max_file_size"); maxSizeStr != "" {
 		if maxSize, err := strconv.ParseInt(maxSizeStr, 10, 64); err == nil && maxSize > 0 {
@@ -146,6 +141,23 @@ func (c *Controller) GetFile(ctx *gin.Context) {
 
 	fileResponse := c.convertToFileResponse(file)
 	ctx.JSON(http.StatusOK, gin.H{"success": true, "message": "File retrieved successfully", "data": fileResponse})
+}
+
+//GetFile by path
+func (c *Controller) GetFileByPath(ctx *gin.Context) {
+	path := ctx.Param("path")
+	if path == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Invalid file path"})
+		return
+	}
+
+	file, err := c.fileService.GetFileByPath(path)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"success": false, "message": "File not found"})
+		return
+	}
+
+	ctx.Data(http.StatusOK, "application/octet-stream", file)
 }
 
 // ListFiles returns paginated list of files
@@ -220,11 +232,11 @@ func (c *Controller) DeleteFile(ctx *gin.Context) {
 // GetUploadConfig returns the current upload configuration
 func (c *Controller) GetUploadConfig(ctx *gin.Context) {
 	config := c.fileService.GetDefaultConfig()
-	
+
 	response := map[string]interface{}{
-		"max_file_size": config.MaxFileSize,
+		"max_file_size":    config.MaxFileSize,
 		"max_file_size_mb": float64(config.MaxFileSize) / (1024 * 1024),
-		"allowed_types": config.AllowedTypes,
+		"allowed_types":    config.AllowedTypes,
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"success": true, "message": "Upload configuration retrieved", "data": response})

@@ -148,6 +148,15 @@ func (s *FileService) GetFile(id int64) (*models.File, error) {
 	return &file, nil
 }
 
+//GetFileByPath retrieves an actual file from storage by its path
+func (s *FileService) GetFileByPath(filePath string) ([]byte, error) {
+	data, err := s.fileUtil.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
 // ListFiles returns paginated list of files
 func (s *FileService) ListFiles(page, limit int, fileType string) ([]models.File, int64, error) {
 	var files []models.File

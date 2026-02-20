@@ -55,7 +55,7 @@ func (r *repository) List(pagination *utils.Pagination) ([]models.User, int64, e
 	r.db.Model(&models.User{}).Count(&total)
 
 	// Apply pagination
-	err := pagination.Paginate(r.db).Find(&users).Error
+	err := pagination.Paginate(r.db, users).Find(&users).Error
 
 	return users, total, err
 }

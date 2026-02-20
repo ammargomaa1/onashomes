@@ -1,52 +1,46 @@
 package suppliers
 
 import (
-	"errors"
 	"time"
 
 	"github.com/onas/ecommerce-api/internal/models"
 	"github.com/onas/ecommerce-api/internal/utils"
 )
 
-type Service interface {
-	Create(companyName, contactPersonName, contactNumber string, createdBy int64) (*models.Supplier, error)
-	Update(id int64, companyName, contactPersonName, contactNumber string, updatedBy int64) (*models.Supplier, error)
-	GetByID(id int64) (*models.Supplier, error)
-	List(pagination *utils.Pagination) ([]models.Supplier, int64, error)
-	Activate(id int64, updatedBy int64) error
-	Deactivate(id int64, updatedBy int64) error
-}
-
-type service struct {
+type Service struct {
 	repo Repository
 }
 
-func NewService(repo Repository) Service {
-	return &service{repo: repo}
+func NewService(repo Repository) *Service {
+	return &Service{repo: repo}
 }
 
-func (s *service) Create(companyName, contactPersonName, contactNumber string, createdBy int64) (*models.Supplier, error) {
+func (s *Service) Create(companyName, contactPersonName, contactNumber string, createdBy int64) utils.IResource {
 	supplier := &models.Supplier{
 		CompanyName:       companyName,
 		ContactPersonName: contactPersonName,
 		ContactNumber:     contactNumber,
-		IsActive:         true,
-		CreatedBy:        createdBy,
-		CreatedAt:        time.Now(),
+		IsActive:          true,
+		CreatedBy:         createdBy,
+		CreatedAt:         time.Now(),
 	}
 
 	if err := s.repo.Create(supplier); err != nil {
-		return nil, err
+		return utils.NewInternalErrorResource("Failed to create supplier", err)
 	}
 
-	// Fetch the created supplier with related data
-	return s.repo.GetByID(supplier.ID)
+	createdSupplier, err := s.repo.GetByID(supplier.ID)
+	if err != nil {
+		return utils.NewInternalErrorResource("Failed to retrieve supplier", err)
+	}
+
+	return utils.NewCreatedResource("Supplier created successfully", createdSupplier)
 }
 
-func (s *service) Update(id int64, companyName, contactPersonName, contactNumber string, updatedBy int64) (*models.Supplier, error) {
+func (s *Service) Update(id int64, companyName, contactPersonName, contactNumber string, updatedBy int64) utils.IResource {
 	supplier, err := s.repo.GetByID(id)
 	if err != nil {
-		return nil, errors.New("supplier not found")
+		return utils.NewNotFoundResource("supplier not found", nil)
 	}
 
 	supplier.CompanyName = companyName
@@ -56,24 +50,56 @@ func (s *service) Update(id int64, companyName, contactPersonName, contactNumber
 	supplier.UpdatedAt = updatedAt
 
 	if err := s.repo.Update(supplier); err != nil {
-		return nil, err
+		return utils.NewInternalErrorResource("Failed to update supplier", err)
 	}
 
-	return s.repo.GetByID(id)
+	updatedSupplier, err := s.repo.GetByID(id)
+	if err != nil {
+		return utils.NewInternalErrorResource("Failed to retrieve supplier", err)
+	}
+
+	return utils.NewOKResource("Supplier updated successfully", updatedSupplier)
 }
 
-func (s *service) GetByID(id int64) (*models.Supplier, error) {
-	return s.repo.GetByID(id)
+func (s *Service) GetByID(id int64) utils.IResource {
+	supplier, err := s.repo.GetByID(id)
+	if err != nil {
+		return utils.NewNotFoundResource("supplier not found", nil)
+	}
+
+	return utils.NewOKResource("Supplier retrieved successfully", supplier)
 }
 
-func (s *service) List(pagination *utils.Pagination) ([]models.Supplier, int64, error) {
-	return s.repo.List(pagination)
+func (s *Service) List(pagination *utils.Pagination) utils.IResource {
+	suppliers, total, err := s.repo.List(pagination)
+	if err != nil {
+		return utils.NewInternalErrorResource("Failed to retrieve suppliers", err)
+	}
+
+	pagination.SetTotal(total)
+	return utils.NewPaginatedOKResource("Suppliers retrieved successfully", suppliers, pagination.GetMeta())
 }
 
-func (s *service) Activate(id int64, updatedBy int64) error {
-	return s.repo.ToggleStatus(id, true, updatedBy)
+func (s *Service) Activate(id int64) utils.IResource {
+	if err := s.repo.ToggleStatus(id, true); err != nil {
+		return utils.NewInternalErrorResource("Failed to activate supplier", err)
+	}
+
+	return utils.NewNoContentResource()
 }
 
-func (s *service) Deactivate(id int64, updatedBy int64) error {
-	return s.repo.ToggleStatus(id, false, updatedBy)
+func (s *Service) Deactivate(id int64) utils.IResource {
+	if err := s.repo.ToggleStatus(id, false); err != nil {
+		return utils.NewInternalErrorResource("Failed to deactivate supplier", err)
+	}
+
+	return utils.NewNoContentResource()
+}
+
+func (s *Service) ListForDropdown() utils.IResource {
+	items, err := s.repo.ListForDropdown()
+	if err != nil {
+		return utils.NewInternalErrorResource("Failed to retrieve suppliers", err)
+	}
+	return utils.NewOKResource("Suppliers retrieved successfully", items)
 }

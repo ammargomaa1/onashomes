@@ -1,0 +1,280 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2025-12-29T04:05:00.000Z",
+  "__export_source": "cascade-onas-attributes",
+  "resources": [
+    {
+      "_id": "wrk_onas_attributes",
+      "_type": "workspace",
+      "parentId": null,
+      "modified": 0,
+      "created": 0,
+      "name": "Onas Attributes API",
+      "description": "Admin attributes and attribute values"
+    },
+    {
+      "_id": "env_onas_attr_base",
+      "_type": "environment",
+      "parentId": "wrk_onas_attributes",
+      "modified": 0,
+      "created": 0,
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:8080",
+        "auth_token": "REPLACE_WITH_JWT"
+      },
+      "dataPropertyOrder": {
+        "&": ["base_url", "auth_token"]
+      },
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 0
+    },
+    {
+      "_id": "fld_admin_attributes",
+      "_type": "request_group",
+      "parentId": "wrk_onas_attributes",
+      "modified": 0,
+      "created": 0,
+      "name": "Admin Attributes",
+      "description": ""
+    },
+    {
+      "_id": "req_attr_list",
+      "_type": "request",
+      "parentId": "fld_admin_attributes",
+      "modified": 0,
+      "created": 0,
+      "name": "List Attributes",
+      "method": "GET",
+      "url": "{{ base_url }}/api/admin/attributes",
+      "body": {},
+      "parameters": [
+        { "name": "page", "value": "1" },
+        { "name": "limit", "value": "20" }
+      ],
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ auth_token }}" }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_attr_get",
+      "_type": "request",
+      "parentId": "fld_admin_attributes",
+      "modified": 0,
+      "created": 0,
+      "name": "Get Attribute",
+      "method": "GET",
+      "url": "{{ base_url }}/api/admin/attributes/1",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ auth_token }}" }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_attr_create",
+      "_type": "request",
+      "parentId": "fld_admin_attributes",
+      "modified": 0,
+      "created": 0,
+      "name": "Create Attribute",
+      "method": "POST",
+      "url": "{{ base_url }}/api/admin/attributes",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Size\",\n  \"is_active\": true\n}"
+      },
+      "parameters": [],
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Authorization", "value": "Bearer {{ auth_token }}" }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_attr_update",
+      "_type": "request",
+      "parentId": "fld_admin_attributes",
+      "modified": 0,
+      "created": 0,
+      "name": "Update Attribute",
+      "method": "PUT",
+      "url": "{{ base_url }}/api/admin/attributes/1",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"name\": \"Size\",\n  \"is_active\": true\n}"
+      },
+      "parameters": [],
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Authorization", "value": "Bearer {{ auth_token }}" }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_attr_delete",
+      "_type": "request",
+      "parentId": "fld_admin_attributes",
+      "modified": 0,
+      "created": 0,
+      "name": "Delete Attribute",
+      "method": "DELETE",
+      "url": "{{ base_url }}/api/admin/attributes/1",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ auth_token }}" }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_attr_values_list",
+      "_type": "request",
+      "parentId": "fld_admin_attributes",
+      "modified": 0,
+      "created": 0,
+      "name": "List Attribute Values",
+      "method": "GET",
+      "url": "{{ base_url }}/api/admin/attributes/1/values",
+      "body": {},
+      "parameters": [
+        { "name": "page", "value": "1" },
+        { "name": "limit", "value": "20" }
+      ],
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ auth_token }}" }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_attr_value_create",
+      "_type": "request",
+      "parentId": "fld_admin_attributes",
+      "modified": 0,
+      "created": 0,
+      "name": "Create Attribute Value",
+      "method": "POST",
+      "url": "{{ base_url }}/api/admin/attributes/1/values",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"value\": \"M\",\n  \"sort_order\": 1,\n  \"is_active\": true\n}"
+      },
+      "parameters": [],
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Authorization", "value": "Bearer {{ auth_token }}" }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_attr_value_update",
+      "_type": "request",
+      "parentId": "fld_admin_attributes",
+      "modified": 0,
+      "created": 0,
+      "name": "Update Attribute Value",
+      "method": "PUT",
+      "url": "{{ base_url }}/api/admin/attributes/1/values/10",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"value\": \"L\",\n  \"sort_order\": 2,\n  \"is_active\": true\n}"
+      },
+      "parameters": [],
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Authorization", "value": "Bearer {{ auth_token }}" }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_attr_value_delete",
+      "_type": "request",
+      "parentId": "fld_admin_attributes",
+      "modified": 0,
+      "created": 0,
+      "name": "Delete Attribute Value",
+      "method": "DELETE",
+      "url": "{{ base_url }}/api/admin/attributes/1/values/10",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ auth_token }}" }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_attr_deleted_list",
+      "_type": "request",
+      "parentId": "fld_admin_attributes",
+      "modified": 0,
+      "created": 0,
+      "name": "List Deleted Attributes",
+      "method": "GET",
+      "url": "{{ base_url }}/api/admin/attributes/deleted",
+      "body": {},
+      "parameters": [
+        { "name": "page", "value": "1" },
+        { "name": "limit", "value": "20" }
+      ],
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ auth_token }}" }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_attr_recover",
+      "_type": "request",
+      "parentId": "fld_admin_attributes",
+      "modified": 0,
+      "created": 0,
+      "name": "Recover Attribute",
+      "method": "PUT",
+      "url": "{{ base_url }}/api/admin/attributes/1/recover",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ auth_token }}" }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_attr_values_deleted_list",
+      "_type": "request",
+      "parentId": "fld_admin_attributes",
+      "modified": 0,
+      "created": 0,
+      "name": "List Deleted Attribute Values",
+      "method": "GET",
+      "url": "{{ base_url }}/api/admin/attributes/1/values/deleted",
+      "body": {},
+      "parameters": [
+        { "name": "page", "value": "1" },
+        { "name": "limit", "value": "20" }
+      ],
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ auth_token }}" }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_attr_value_recover",
+      "_type": "request",
+      "parentId": "fld_admin_attributes",
+      "modified": 0,
+      "created": 0,
+      "name": "Recover Attribute Value",
+      "method": "PUT",
+      "url": "{{ base_url }}/api/admin/attributes/1/values/10/recover",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {{ auth_token }}" }
+      ],
+      "authentication": {}
+    }
+  ]
+}

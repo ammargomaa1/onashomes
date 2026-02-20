@@ -2,6 +2,7 @@ package users
 
 import (
 	"github.com/gin-gonic/gin"
+	userreq "github.com/onas/ecommerce-api/internal/api/users/requests"
 	"github.com/onas/ecommerce-api/internal/utils"
 )
 
@@ -13,95 +14,49 @@ func NewController(service Service) *Controller {
 	return &Controller{service: service}
 }
 
-type RegisterRequest struct {
-	Email     string `json:"email" binding:"required,email"`
-	Password  string `json:"password" binding:"required,min=6"`
-	FirstName string `json:"first_name" binding:"required"`
-	LastName  string `json:"last_name" binding:"required"`
-}
-
-type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
-}
-
-type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
-}
-
-type UpdateProfileRequest struct {
-	FirstName string `json:"first_name" binding:"required"`
-	LastName  string `json:"last_name" binding:"required"`
-}
-
 func (ctrl *Controller) Register(c *gin.Context) {
-	var req RegisterRequest
+	var req userreq.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(c, err.Error())
 		return
 	}
 
-	user, err := ctrl.service.Register(req.Email, req.Password, req.FirstName, req.LastName)
-	if err != nil {
-		utils.ErrorResponse(c, 400, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(c, 201, "User registered successfully", user)
+	res := ctrl.service.Register(req.Email, req.Password, req.FirstName, req.LastName)
+	utils.WriteResource(c, res)
 }
 
 func (ctrl *Controller) Login(c *gin.Context) {
-	var req LoginRequest
+	var req userreq.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(c, err.Error())
 		return
 	}
 
-	accessToken, refreshToken, err := ctrl.service.Login(req.Email, req.Password)
-	if err != nil {
-		utils.ErrorResponse(c, 401, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(c, 200, "Login successful", gin.H{
-		"access_token":  accessToken,
-		"refresh_token": refreshToken,
-	})
+	res := ctrl.service.Login(req.Email, req.Password)
+	utils.WriteResource(c, res)
 }
 
 func (ctrl *Controller) RefreshToken(c *gin.Context) {
-	var req RefreshTokenRequest
+	var req userreq.RefreshTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(c, err.Error())
 		return
 	}
 
-	accessToken, err := ctrl.service.RefreshToken(req.RefreshToken)
-	if err != nil {
-		utils.ErrorResponse(c, 401, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(c, 200, "Token refreshed successfully", gin.H{
-		"access_token": accessToken,
-	})
+	res := ctrl.service.RefreshToken(req.RefreshToken)
+	utils.WriteResource(c, res)
 }
 
 func (ctrl *Controller) GetProfile(c *gin.Context) {
 	entityID, _ := c.Get("entity_id")
 	userID := entityID.(int64)
 
-	user, err := ctrl.service.GetProfile(userID)
-	if err != nil {
-		utils.ErrorResponse(c, 404, "User not found", nil)
-		return
-	}
-
-	utils.SuccessResponse(c, 200, "Profile retrieved successfully", user)
+	res := ctrl.service.GetProfile(userID)
+	utils.WriteResource(c, res)
 }
 
 func (ctrl *Controller) UpdateProfile(c *gin.Context) {
-	var req UpdateProfileRequest
+	var req userreq.UpdateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ValidationErrorResponse(c, err.Error())
 		return
@@ -110,24 +65,13 @@ func (ctrl *Controller) UpdateProfile(c *gin.Context) {
 	entityID, _ := c.Get("entity_id")
 	userID := entityID.(int64)
 
-	user, err := ctrl.service.UpdateProfile(userID, req.FirstName, req.LastName)
-	if err != nil {
-		utils.ErrorResponse(c, 400, err.Error(), nil)
-		return
-	}
-
-	utils.SuccessResponse(c, 200, "Profile updated successfully", user)
+	res := ctrl.service.UpdateProfile(userID, req.FirstName, req.LastName)
+	utils.WriteResource(c, res)
 }
 
 func (ctrl *Controller) List(c *gin.Context) {
 	pagination := utils.ParsePaginationParams(c)
 
-	users, total, err := ctrl.service.List(pagination)
-	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed to retrieve users", err.Error())
-		return
-	}
-
-	pagination.SetTotal(total)
-	utils.SuccessResponseWithMeta(c, 200, "Users retrieved successfully", users, pagination.GetMeta())
+	res := ctrl.service.List(pagination)
+	utils.WriteResource(c, res)
 }

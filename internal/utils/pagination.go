@@ -51,12 +51,30 @@ func ParsePaginationParams(c *gin.Context) *Pagination {
 	}
 }
 
-// Paginate applies pagination to a GORM query
-func (p *Pagination) Paginate(db *gorm.DB) *gorm.DB {
+func (p *Pagination) Paginate(db *gorm.DB, model interface{}) *gorm.DB {
+	var total int64
+
+	// Count the total records BEFORE applying offset/limit
+	// This works for both simple models and complex queries with JOINs
+	countQuery := db
+	if model != nil {
+		countQuery = db.Model(model)
+	}
+
+	if err := countQuery.Count(&total).Error; err == nil {
+		p.SetTotal(total)
+	}
+
 	offset := (p.Page - 1) * p.Limit
 
-	query := db.Offset(offset).Limit(p.Limit)
+	// Apply offset and limit — scope to the model so GORM knows the table
+	query := db
+	if model != nil {
+		query = query.Model(model)
+	}
+	query = query.Offset(offset).Limit(p.Limit)
 
+	// Apply sorting
 	if p.Sort != "" {
 		orderClause := p.Sort
 		if p.Order != "" {

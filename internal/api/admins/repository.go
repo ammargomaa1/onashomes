@@ -55,7 +55,7 @@ func (r *repository) List(pagination *utils.Pagination) ([]models.Admin, int64, 
 	r.db.Model(&models.Admin{}).Count(&total)
 
 	// Apply pagination
-	err := pagination.Paginate(r.db).Preload("Role").Find(&admins).Error
+	err := pagination.Paginate(r.db, admins).Preload("Role").Find(&admins).Error
 
 	return admins, total, err
 }
