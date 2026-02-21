@@ -74,12 +74,14 @@ func (s *ServiceV2) CreateProductV2(req requests.CreateProductV2Request) utils.I
 		}
 	}
 
-
-
 	// Validate variants if any
 	if len(req.Variants) > 0 {
 		skuMap := make(map[string]bool)
-		for _, vReq := range req.Variants {
+		for i, vReq := range req.Variants {
+			if vReq.SKU == "" {
+				vReq.SKU = utils.GenerateRandomSKU()
+				req.Variants[i].SKU = vReq.SKU
+			}
 			// 1. Check duplicates within the request
 			if skuMap[vReq.SKU] {
 				return utils.NewBadRequestResource(fmt.Sprintf("Duplicate SKU '%s' in request", vReq.SKU), nil)
@@ -227,7 +229,11 @@ func (s *ServiceV2) UpdateProductV2(id int64, req requests.UpdateProductV2Reques
 	// Validate variants if any
 	if len(req.Variants) > 0 {
 		skuMap := make(map[string]bool)
-		for _, vReq := range req.Variants {
+		for i, vReq := range req.Variants {
+			if vReq.SKU == "" {
+				vReq.SKU = utils.GenerateRandomSKU()
+				req.Variants[i].SKU = vReq.SKU
+			}
 			// 1. Check duplicates within the request
 			if skuMap[vReq.SKU] {
 				return utils.NewBadRequestResource(fmt.Sprintf("Duplicate SKU '%s' in request", vReq.SKU), nil)
@@ -283,79 +289,79 @@ func (s *ServiceV2) UpdateProductV2(id int64, req requests.UpdateProductV2Reques
 		}
 
 		// Handle Variants (Upsert)
-			for _, vReq := range req.Variants {
-				if vReq.ID != nil && *vReq.ID > 0 {
-					// Update existing
-					var existing models.ProductVariant
-					if err := tx.Where("id = ? AND product_id = ?", *vReq.ID, id).First(&existing).Error; err != nil {
-						return fmt.Errorf("variant %d not found for product", *vReq.ID)
-					}
-
-					if err := validateVariantAttributeRule(product, vReq.AttributeValue); err != nil {
-						return fmt.Errorf("variant validation failed: %w", err)
-					}
-
-					existing.SKU = vReq.SKU
-					existing.AttributeValue = vReq.AttributeValue
-					existing.Price = vReq.Price
-					existing.CompareAtPrice = vReq.CompareAtPrice
-					existing.CostPrice = vReq.CostPrice
-					existing.Weight = vReq.Weight
-					existing.Length = vReq.Length
-					existing.Width = vReq.Width
-					existing.Height = vReq.Height
-					existing.IsActive = vReq.IsActive
-					if vReq.Barcode != "" {
-						existing.Barcode = &vReq.Barcode
-					}
-
-					if err := repoTx.UpdateVariantV2(&existing); err != nil {
-						return fmt.Errorf("failed to update variant %s: %w", vReq.SKU, err)
-					}
-				} else {
-					// Create new
-					if err := validateVariantAttributeRule(product, vReq.AttributeValue); err != nil {
-						return fmt.Errorf("variant validation failed: %w", err)
-					}
-
-					variant := &models.ProductVariant{
-						ProductID:      id,
-						SKU:            vReq.SKU,
-						AttributeValue: vReq.AttributeValue,
-						Price:          vReq.Price,
-						CompareAtPrice: vReq.CompareAtPrice,
-						CostPrice:      vReq.CostPrice,
-						Weight:         vReq.Weight,
-						Length:         vReq.Length,
-						Width:          vReq.Width,
-						Height:         vReq.Height,
-						IsActive:       vReq.IsActive,
-					}
-					if vReq.Barcode != "" {
-						variant.Barcode = &vReq.Barcode
-					}
-
-					if err := repoTx.CreateVariantV2(variant); err != nil {
-						return fmt.Errorf("failed to create new variant %s: %w", vReq.SKU, err)
-					}
-
-					// Create inventory for new variant
-					initialStock := 0
-					if vReq.Stock != nil {
-						initialStock = *vReq.Stock
-					}
-					for _, sfID := range req.StoreFrontIDs {
-						inv := models.VariantInventory{
-							ProductVariantID:  variant.ID,
-							StoreFrontID:      sfID,
-							Quantity:          initialStock,
-							LowStockThreshold: 5,
-						}
-						// Ignore error if exists (unlikely for new variant)
-						_ = repoTx.CreateVariantInventory(&inv)
-					}
+		for _, vReq := range req.Variants {
+			if vReq.ID != nil && *vReq.ID > 0 {
+				// Update existing
+				var existing models.ProductVariant
+				if err := tx.Where("id = ? AND product_id = ?", *vReq.ID, id).First(&existing).Error; err != nil {
+					return fmt.Errorf("variant %d not found for product", *vReq.ID)
 				}
-			}		
+
+				if err := validateVariantAttributeRule(product, vReq.AttributeValue); err != nil {
+					return fmt.Errorf("variant validation failed: %w", err)
+				}
+
+				existing.SKU = vReq.SKU
+				existing.AttributeValue = vReq.AttributeValue
+				existing.Price = vReq.Price
+				existing.CompareAtPrice = vReq.CompareAtPrice
+				existing.CostPrice = vReq.CostPrice
+				existing.Weight = vReq.Weight
+				existing.Length = vReq.Length
+				existing.Width = vReq.Width
+				existing.Height = vReq.Height
+				existing.IsActive = vReq.IsActive
+				if vReq.Barcode != "" {
+					existing.Barcode = &vReq.Barcode
+				}
+
+				if err := repoTx.UpdateVariantV2(&existing); err != nil {
+					return fmt.Errorf("failed to update variant %s: %w", vReq.SKU, err)
+				}
+			} else {
+				// Create new
+				if err := validateVariantAttributeRule(product, vReq.AttributeValue); err != nil {
+					return fmt.Errorf("variant validation failed: %w", err)
+				}
+
+				variant := &models.ProductVariant{
+					ProductID:      id,
+					SKU:            vReq.SKU,
+					AttributeValue: vReq.AttributeValue,
+					Price:          vReq.Price,
+					CompareAtPrice: vReq.CompareAtPrice,
+					CostPrice:      vReq.CostPrice,
+					Weight:         vReq.Weight,
+					Length:         vReq.Length,
+					Width:          vReq.Width,
+					Height:         vReq.Height,
+					IsActive:       vReq.IsActive,
+				}
+				if vReq.Barcode != "" {
+					variant.Barcode = &vReq.Barcode
+				}
+
+				if err := repoTx.CreateVariantV2(variant); err != nil {
+					return fmt.Errorf("failed to create new variant %s: %w", vReq.SKU, err)
+				}
+
+				// Create inventory for new variant
+				initialStock := 0
+				if vReq.Stock != nil {
+					initialStock = *vReq.Stock
+				}
+				for _, sfID := range req.StoreFrontIDs {
+					inv := models.VariantInventory{
+						ProductVariantID:  variant.ID,
+						StoreFrontID:      sfID,
+						Quantity:          initialStock,
+						LowStockThreshold: 5,
+					}
+					// Ignore error if exists (unlikely for new variant)
+					_ = repoTx.CreateVariantInventory(&inv)
+				}
+			}
+		}
 
 		return nil
 	})
@@ -544,6 +550,10 @@ func (s *ServiceV2) CreateVariantV2(productID int64, req requests.CreateVariantV
 		return utils.NewBadRequestResource(err.Error(), nil)
 	}
 
+	if req.SKU == "" {
+		req.SKU = utils.GenerateRandomSKU()
+	}
+
 	// Validate SKU uniqueness
 	unique, err := s.repo.IsSKUUnique(req.SKU, 0)
 	if err != nil {
@@ -622,6 +632,10 @@ func (s *ServiceV2) UpdateVariantV2(productID, variantID int64, req requests.Cre
 
 	if err := validateVariantAttributeRule(product, req.AttributeValue); err != nil {
 		return utils.NewBadRequestResource(err.Error(), nil)
+	}
+
+	if req.SKU == "" {
+		req.SKU = utils.GenerateRandomSKU()
 	}
 
 	// SKU uniqueness check (exclude self)

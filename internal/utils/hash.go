@@ -1,6 +1,12 @@
 package utils
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"strings"
+	"time"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -14,4 +20,14 @@ func HashPassword(password string) (string, error) {
 func CheckPasswordHash(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
+}
+
+// GenerateRandomSKU generates a random SKU string in the format SKU-XXXXXXXX
+func GenerateRandomSKU() string {
+	bytes := make([]byte, 4)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback if crypto/rand fails
+		return fmt.Sprintf("SKU-%d", time.Now().UnixNano())
+	}
+	return fmt.Sprintf("SKU-%s", strings.ToUpper(hex.EncodeToString(bytes)))
 }
