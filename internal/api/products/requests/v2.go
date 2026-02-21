@@ -53,7 +53,7 @@ type ProductSEORequest struct {
 // CreateVariantV2Request is the V2 variant creation request with pricing
 type CreateVariantV2Request struct {
 	ID             *int64   `json:"id"` // Optional: for updates
-	SKU            string   `json:"sku" binding:"required"`
+	SKU            string   `json:"sku"`
 	AttributeValue string   `json:"attribute_value"`
 	Price          *float64 `json:"price" binding:"required"`
 	CompareAtPrice *float64 `json:"compare_at_price"`
