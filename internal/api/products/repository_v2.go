@@ -38,6 +38,7 @@ type AdminProductV2ListItem struct {
 	MaxPrice      *float64  `json:"max_price"`
 	CreatedAt     time.Time `json:"created_at"`
 	Name          string    `json:"name"`
+	CoverImageURL *string   `json:"cover_image_url"`
 }
 
 type AdminProductV2Detail struct {
@@ -407,9 +408,14 @@ func (r *V2Repository) ListAdminProductsV2(filter requests.ProductFilterRequest,
 			p.created_at,
 			(SELECT COUNT(*) FROM product_variants pv WHERE pv.product_id = p.id AND pv.deleted_at IS NULL) as variant_count,
 			(SELECT MIN(pv.price) FROM product_variants pv WHERE pv.product_id = p.id AND pv.deleted_at IS NULL) as min_price,
-			(SELECT MIN(pv.price) FROM product_variants pv WHERE pv.product_id = p.id AND pv.deleted_at IS NULL) as min_price,
 			(SELECT MAX(pv.price) FROM product_variants pv WHERE pv.product_id = p.id AND pv.deleted_at IS NULL) as max_price,
-			p.name_en as name
+			p.name_en as name,
+			(SELECT f.file_path 
+			 FROM product_images pi 
+			 JOIN files f ON f.id = pi.file_id 
+			 WHERE pi.product_id = p.id 
+			 ORDER BY pi.is_cover DESC, pi.position ASC 
+			 LIMIT 1) as cover_image_url
 		`).
 		Order("p.created_at DESC").
 		Offset(offset).Limit(pagination.Limit).
