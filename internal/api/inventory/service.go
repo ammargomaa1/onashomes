@@ -270,3 +270,39 @@ func (s *Service) ReleaseReservedStockWithTx(tx *gorm.DB, variantID, storeFrontI
 
 	return nil
 }
+
+// RestockWithTx restocks previously deducted quantity (e.g., for cancelled confirmed orders)
+func (s *Service) RestockWithTx(tx *gorm.DB, variantID, storeFrontID int64, quantity int) error {
+	repo := &Repository{db: tx}
+
+	inv, err := repo.GetVariantInventory(variantID, storeFrontID)
+	if err != nil {
+		return err
+	}
+
+	locked, err := repo.LockInventory(tx, inv.ID)
+	if err != nil {
+		return err
+	}
+
+	// Smart restock: return `quantity` to AvailableQuantity.
+	// Available = Quantity - ReservedQuantity
+	// If the stock was only reserved, decrementing ReservedQuantity achieves this.
+	// If it was deducted, ReservedQuantity might be 0, so decrementing goes negative.
+	// In that case, we increase Quantity to cover the deficit.
+
+	newReserved := locked.ReservedQuantity - quantity
+	newQty := locked.Quantity
+
+	if newReserved < 0 {
+		deficit := -newReserved
+		newQty = locked.Quantity + deficit
+		newReserved = 0
+	}
+
+	if err := repo.UpdateStock(tx, locked.ID, newQty, newReserved); err != nil {
+		return err
+	}
+
+	return nil
+}

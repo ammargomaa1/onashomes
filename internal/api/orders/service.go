@@ -456,7 +456,11 @@ func (s *Service) CancelOrder(id int64) utils.IResource {
 				}
 			}
 		} else if order.OrderStatus.Slug == "confirmed" {
-			return fmt.Errorf("cancellation of confirmed orders requires restocking (not implemented in P1)")
+			for _, item := range order.Items {
+				if err := s.invService.RestockWithTx(tx, item.ProductVariantID, order.StoreFrontID, item.Quantity); err != nil {
+					return fmt.Errorf("failed to restock for item %s: %w", item.SKU, err)
+				}
+			}
 		}
 
 		cancelledStatus, err := repoTx.GetOrderStatusBySlug("cancelled")
