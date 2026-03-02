@@ -8,10 +8,17 @@ import (
 	"strings"
 )
 
-const (
+var (
 	// StorageDir is the base directory for all file storage
-	StorageDir = "../../storage"
+	StorageDir = getStorageDir()
 )
+
+func getStorageDir() string {
+	if dir := os.Getenv("STORAGE_DIR"); dir != "" {
+		return dir
+	}
+	return "/home/ammargomaa1/cookieandmore/storage"
+}
 
 // FileUtil handles file operations within the storage directory
 type FileUtil struct {

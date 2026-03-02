@@ -35,7 +35,9 @@ func (r *Repository) CreateOrderItems(tx *gorm.DB, items []models.OrderItem) err
 // GetOrderByID retrieves an order with preloaded items and storefront
 func (r *Repository) GetOrderByID(id int64) (*models.Order, error) {
 	var order models.Order
-	err := r.db.Preload("Items").Preload("Items.ProductVariant").Preload("StoreFront").
+	err := r.db.Preload("Items").Preload("Items.ProductVariant").
+		Preload("Items.Product").Preload("Items.Product.Images").Preload("Items.Product.Images.File").
+		Preload("StoreFront").
 		Preload("OrderStatus").Preload("PaymentStatus").Preload("FulfillmentStatus").Preload("Currency").
 		Preload("PaymentMethod").Preload("OrderSource").
 		Preload("CreatedBy").

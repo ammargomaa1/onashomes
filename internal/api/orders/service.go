@@ -456,7 +456,11 @@ func (s *Service) CancelOrder(id int64) utils.IResource {
 				}
 			}
 		} else if order.OrderStatus.Slug == "confirmed" {
-			return fmt.Errorf("cancellation of confirmed orders requires restocking (not implemented in P1)")
+			for _, item := range order.Items {
+				if err := s.invService.RestockWithTx(tx, item.ProductVariantID, order.StoreFrontID, item.Quantity); err != nil {
+					return fmt.Errorf("failed to restock for item %s: %w", item.SKU, err)
+				}
+			}
 		}
 
 		cancelledStatus, err := repoTx.GetOrderStatusBySlug("cancelled")
@@ -548,10 +552,12 @@ func (s *Service) UpdateOrder(id int64, req requests.UpdateOrderRequest) utils.I
 		// Wait, `UpdateOrder` struct in `requests` package might include status?
 		// Checking `UpdateOrderRequest`.
 
-		// Only allow updates for Draft/Pending/Paid orders. Confirmed/Completed orders are locked for structured flows.
-		if order.OrderStatus.Slug == "confirmed" || order.OrderStatus.Slug == "completed" || order.OrderStatus.Slug == "cancelled" {
+		// Only allow updates for Draft/Pending/Paid/Confirmed orders. Completed/Cancelled orders are locked.
+		if order.OrderStatus.Slug == "completed" || order.OrderStatus.Slug == "cancelled" {
 			return fmt.Errorf("cannot update order with status %s", order.OrderStatus.Slug)
 		}
+
+		isConfirmed := order.OrderStatus.Slug == "confirmed"
 
 		// 2. Update Basic Info
 		order.CustomerName = req.CustomerName
@@ -561,6 +567,12 @@ func (s *Service) UpdateOrder(id int64, req requests.UpdateOrderRequest) utils.I
 		order.ShippingAmount = req.ShippingAmount
 		order.TaxAmount = req.TaxAmount
 		order.DiscountAmount = req.DiscountAmount
+		if req.OrderSourceID != nil && *req.OrderSourceID > 0 {
+			order.OrderSourceID = req.OrderSourceID
+		}
+		if req.PaymentMethodID != nil && *req.PaymentMethodID > 0 {
+			order.PaymentMethodID = req.PaymentMethodID
+		}
 		// Note: StoreFront cannot be changed easily as it affects currency/inventory context. Ignoring for now.
 
 		// 3. Process Items Diff
@@ -589,9 +601,15 @@ func (s *Service) UpdateOrder(id int64, req requests.UpdateOrderRequest) utils.I
 					return fmt.Errorf("variant not found: %d", itemReq.ProductVariantID)
 				}
 
-				// Reserve Stock
-				if err := s.invService.ReserveStockWithTx(tx, variant.ID, order.StoreFrontID, itemReq.Quantity); err != nil {
-					return fmt.Errorf("stock reservation failed for new item %s: %w", variant.SKU, err)
+				// Reserve Stock or Deduct
+				if isConfirmed {
+					if err := s.invService.ConfirmStockDeductionWithTx(tx, variant.ID, order.StoreFrontID, itemReq.Quantity); err != nil {
+						return fmt.Errorf("stock deduction failed for new item %s: %w", variant.SKU, err)
+					}
+				} else {
+					if err := s.invService.ReserveStockWithTx(tx, variant.ID, order.StoreFrontID, itemReq.Quantity); err != nil {
+						return fmt.Errorf("stock reservation failed for new item %s: %w", variant.SKU, err)
+					}
 				}
 
 				// Pricing
@@ -638,10 +656,17 @@ func (s *Service) UpdateOrder(id int64, req requests.UpdateOrderRequest) utils.I
 				delete(currentItems, itemReq.ID) // Mark as processed
 
 				if itemReq.IsRemoved {
-					// REMOVE: Release Stock -> Delete
-					if err := s.invService.ReleaseReservedStockWithTx(tx, existingItem.ProductVariantID, order.StoreFrontID, existingItem.Quantity); err != nil {
-						return fmt.Errorf("stock release failed for removed item %s: %w", existingItem.SKU, err)
+					// REMOVE: Release/Restock Stock -> Delete
+					if isConfirmed {
+						if err := s.invService.RestockWithTx(tx, existingItem.ProductVariantID, order.StoreFrontID, existingItem.Quantity); err != nil {
+							return fmt.Errorf("stock restock failed for removed item %s: %w", existingItem.SKU, err)
+						}
+					} else {
+						if err := s.invService.ReleaseReservedStockWithTx(tx, existingItem.ProductVariantID, order.StoreFrontID, existingItem.Quantity); err != nil {
+							return fmt.Errorf("stock release failed for removed item %s: %w", existingItem.SKU, err)
+						}
 					}
+
 					if err := tx.Delete(&existingItem).Error; err != nil {
 						return err
 					}
@@ -651,14 +676,26 @@ func (s *Service) UpdateOrder(id int64, req requests.UpdateOrderRequest) utils.I
 					qtyDiff := itemReq.Quantity - existingItem.Quantity
 
 					if qtyDiff > 0 {
-						// Increase: Reserve more
-						if err := s.invService.ReserveStockWithTx(tx, existingItem.ProductVariantID, order.StoreFrontID, qtyDiff); err != nil {
-							return fmt.Errorf("stock reservation failed for update %s: %w", existingItem.SKU, err)
+						// Increase
+						if isConfirmed {
+							if err := s.invService.ConfirmStockDeductionWithTx(tx, existingItem.ProductVariantID, order.StoreFrontID, qtyDiff); err != nil {
+								return fmt.Errorf("stock deduction failed for update %s: %w", existingItem.SKU, err)
+							}
+						} else {
+							if err := s.invService.ReserveStockWithTx(tx, existingItem.ProductVariantID, order.StoreFrontID, qtyDiff); err != nil {
+								return fmt.Errorf("stock reservation failed for update %s: %w", existingItem.SKU, err)
+							}
 						}
 					} else if qtyDiff < 0 {
-						// Decrease: Release some
-						if err := s.invService.ReleaseReservedStockWithTx(tx, existingItem.ProductVariantID, order.StoreFrontID, -qtyDiff); err != nil {
-							return fmt.Errorf("stock release failed for update %s: %w", existingItem.SKU, err)
+						// Decrease
+						if isConfirmed {
+							if err := s.invService.RestockWithTx(tx, existingItem.ProductVariantID, order.StoreFrontID, -qtyDiff); err != nil {
+								return fmt.Errorf("stock restock failed for update %s: %w", existingItem.SKU, err)
+							}
+						} else {
+							if err := s.invService.ReleaseReservedStockWithTx(tx, existingItem.ProductVariantID, order.StoreFrontID, -qtyDiff); err != nil {
+								return fmt.Errorf("stock release failed for update %s: %w", existingItem.SKU, err)
+							}
 						}
 					}
 
@@ -702,6 +739,27 @@ func (s *Service) UpdateOrder(id int64, req requests.UpdateOrderRequest) utils.I
 
 		if err := tx.Save(order).Error; err != nil {
 			return err
+		}
+
+		// 5. Update Address
+		if order.Address != nil {
+			if req.CountryID != nil {
+				order.Address.CountryID = *req.CountryID
+			}
+			if req.GovernorateID != nil {
+				order.Address.GovernorateID = *req.GovernorateID
+			}
+			if req.CityID != nil {
+				order.Address.CityID = *req.CityID
+			}
+			order.Address.Street = req.Street
+			order.Address.BuildingNumber = req.BuildingNumber
+			order.Address.Floor = req.Floor
+			order.Address.Apartment = req.Apartment
+			order.Address.SpecialMark = req.SpecialMark
+			if err := tx.Save(order.Address).Error; err != nil {
+				return fmt.Errorf("failed to update address: %w", err)
+			}
 		}
 
 		updatedOrder = order
