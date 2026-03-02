@@ -289,8 +289,10 @@ func (s *ServiceV2) UpdateProductV2(id int64, req requests.UpdateProductV2Reques
 		}
 
 		// Handle Variants (Upsert)
+		keepIDs := []int64{}
 		for _, vReq := range req.Variants {
 			if vReq.ID != nil && *vReq.ID > 0 {
+				keepIDs = append(keepIDs, *vReq.ID)
 				// Update existing
 				var existing models.ProductVariant
 				if err := tx.Where("id = ? AND product_id = ?", *vReq.ID, id).First(&existing).Error; err != nil {
@@ -344,6 +346,7 @@ func (s *ServiceV2) UpdateProductV2(id int64, req requests.UpdateProductV2Reques
 				if err := repoTx.CreateVariantV2(variant); err != nil {
 					return fmt.Errorf("failed to create new variant %s: %w", vReq.SKU, err)
 				}
+				keepIDs = append(keepIDs, variant.ID)
 
 				// Create inventory for new variant
 				initialStock := 0
@@ -361,6 +364,10 @@ func (s *ServiceV2) UpdateProductV2(id int64, req requests.UpdateProductV2Reques
 					_ = repoTx.CreateVariantInventory(&inv)
 				}
 			}
+		}
+
+		if err := repoTx.SoftDeleteVariantsNotIn(tx, id, keepIDs); err != nil {
+			return fmt.Errorf("failed to soft-delete removed variants: %w", err)
 		}
 
 		return nil

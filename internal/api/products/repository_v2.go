@@ -446,6 +446,15 @@ func (r *V2Repository) GetVariantByID(variantID int64) (*models.ProductVariant, 
 	return &v, nil
 }
 
+func (r *V2Repository) SoftDeleteVariantsNotIn(tx *gorm.DB, productID int64, keepIDs []int64) error {
+	query := tx.Model(&models.ProductVariant{}).
+		Where("product_id = ? AND deleted_at IS NULL", productID)
+	if len(keepIDs) > 0 {
+		query = query.Where("id NOT IN ?", keepIDs)
+	}
+	return query.Update("deleted_at", time.Now()).Error
+}
+
 func (r *V2Repository) IsSKUUnique(sku string, excludeVariantID int64) (bool, error) {
 	var count int64
 	query := r.db.Model(&models.ProductVariant{}).Where("sku = ? AND deleted_at IS NULL", sku)
