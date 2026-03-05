@@ -44,4 +44,5 @@ type OrderFilterRequest struct {
 	DateFrom      string `form:"date_from"`      // YYYY-MM-DD
 	DateTo        string `form:"date_to"`        // YYYY-MM-DD
 	Search        string `form:"search"`
+	CustomerID    int64 `form:"customer_id"`
 }

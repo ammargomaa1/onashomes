@@ -117,6 +117,9 @@ func (r *Repository) ListOrders(filter requests.OrderFilterRequest, pagination *
 					Group("orders.id")
 			}
 		}
+		if filter.CustomerID != 0 {
+			q = q.Where("orders.customer_id = ?", filter.DateFrom)
+		}
 		if filter.DateFrom != "" {
 			q = q.Where("orders.created_at >= ?", filter.DateFrom)
 		}

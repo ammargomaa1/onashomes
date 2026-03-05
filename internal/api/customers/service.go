@@ -43,7 +43,7 @@ func (s *Service) CreateCustomer(customer *models.Customer) error {
 	}
 
 	// Validate Phone Format (010, 011, 015 and 11 digits)
-	matched, _ := regexp.MatchString(`^(010|011|015)\d{8}$`, customer.Phone)
+	matched, _ := regexp.MatchString(`^(010|011|015|012)\d{8}$`, customer.Phone)
 	if !matched {
 		return errors.New("phone must start with 010, 011, or 015 and be exactly 11 digits")
 	}

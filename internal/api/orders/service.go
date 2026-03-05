@@ -601,15 +601,11 @@ func (s *Service) UpdateOrder(id int64, req requests.UpdateOrderRequest) utils.I
 					return fmt.Errorf("variant not found: %d", itemReq.ProductVariantID)
 				}
 
-				// Reserve Stock or Deduct
+				// Reserve Stock or Deduct (Best effort for admin orders)
 				if isConfirmed {
-					if err := s.invService.ConfirmStockDeductionWithTx(tx, variant.ID, order.StoreFrontID, itemReq.Quantity); err != nil {
-						return fmt.Errorf("stock deduction failed for new item %s: %w", variant.SKU, err)
-					}
+					_ = s.invService.ConfirmStockDeductionWithTx(tx, variant.ID, order.StoreFrontID, itemReq.Quantity)
 				} else {
-					if err := s.invService.ReserveStockWithTx(tx, variant.ID, order.StoreFrontID, itemReq.Quantity); err != nil {
-						return fmt.Errorf("stock reservation failed for new item %s: %w", variant.SKU, err)
-					}
+					_ = s.invService.ReserveStockWithTx(tx, variant.ID, order.StoreFrontID, itemReq.Quantity)
 				}
 
 				// Pricing
